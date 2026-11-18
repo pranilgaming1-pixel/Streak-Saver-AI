@@ -93,8 +93,7 @@ fun StreakSaverApp() {
                             Text("STREAK SAVER AI", color = Accent, fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp)
                             Spacer(Modifier.height(7.dp))
-                            Text("Keep your
-conversations alive.", fontSize = 30.sp,
+                            Text("Keep your\nconversations alive.", fontSize = 30.sp,
                                 lineHeight = 35.sp, fontWeight = FontWeight.ExtraBold)
                             Text("Small reminders. Better messages.", color = Muted, fontSize = 14.sp)
                         }
