@@ -3,7 +3,8 @@
 A native Kotlin Android companion app for TikTok streak reminders and AI-assisted message drafting.
 
 ## Included
-- Room database for persistent friend profiles and reminder preferences
+- Room database for persistent friend profiles, reminder preferences, and manually checked-in streak counts
+- Manual daily check-in to track your streak in-app after you send a TikTok message
 - Background reminder checks with WorkManager (15-minute periodic checks; delivery time can be delayed by Android battery optimization)
 - Android notifications with per-friend daily reminder time
 - Gemini message generation using the official REST `generateContent` endpoint

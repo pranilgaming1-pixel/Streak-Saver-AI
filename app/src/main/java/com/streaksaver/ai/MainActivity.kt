@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 private val AppBg = Color(0xFF0B0D14)
 private val CardBg = Color(0xFF171B28)
@@ -150,6 +151,12 @@ fun StreakSaverApp() {
                             },
                             onDelete = {
                                 scope.launch(Dispatchers.IO) { dao.delete(friend) }
+                            },
+                            onMarkSent = {
+                                scope.launch(Dispatchers.IO) {
+                                    val today = LocalDate.now()
+                                    dao.markSentToday(friend.id, today.toString(), today.minusDays(1).toString())
+                                }
                             },
                             onOpen = {
                                 val ok = TikTokLauncher.openProfile(context, friend.username)
@@ -300,6 +307,7 @@ private fun FriendCard(
     friend: FriendEntity,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onMarkSent: () -> Unit,
     onOpen: () -> Unit,
     onGenerate: () -> Unit
 ) {
@@ -323,6 +331,12 @@ private fun FriendCard(
                 Spacer(Modifier.weight(1f))
                 Text(String.format("%02d:%02d", friend.reminderHour, friend.reminderMinute),
                     color = Accent, fontWeight = FontWeight.Bold)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔥 ${friend.streakDays}-day app-tracked streak", color = Accent, fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onMarkSent) { Text("Mark sent today") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onGenerate, modifier = Modifier.weight(1f)) { Text("AI message") }

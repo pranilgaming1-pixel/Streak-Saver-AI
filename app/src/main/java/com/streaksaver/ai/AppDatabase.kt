@@ -32,6 +32,9 @@ interface FriendDao {
 
     @Query("UPDATE friends SET lastNotificationDate = :date WHERE id = :id")
     suspend fun markNotified(id: Long, date: String)
+
+    @Query("UPDATE friends SET streakDays = CASE WHEN lastCheckInDate = :today THEN streakDays WHEN lastCheckInDate = :yesterday THEN streakDays + 1 ELSE 1 END, lastCheckInDate = :today WHERE id = :id")
+    suspend fun markSentToday(id: Long, today: String, yesterday: String)
 }
 
 @Database(entities = [FriendEntity::class], version = 1, exportSchema = false)

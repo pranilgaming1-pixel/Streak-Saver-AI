@@ -11,5 +11,7 @@ data class FriendEntity(
     val reminderHour: Int = 20,
     val reminderMinute: Int = 0,
     val reminderEnabled: Boolean = true,
-    val lastNotificationDate: String = ""
+    val lastNotificationDate: String = "",
+    val streakDays: Int = 0,
+    val lastCheckInDate: String = ""
 )
