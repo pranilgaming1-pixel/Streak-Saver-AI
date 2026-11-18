@@ -62,12 +62,12 @@ private object Supabase {
                 if (code in 200..299) {
                     val token = json.optString("access_token")
                     val mail = json.optJSONObject("user")?.optString("email").orEmpty().ifBlank { body.optString("email") }
-                    Triple(true, if (token.isBlank()) "Request accepted. Check your email if confirmation is enabled." else "Signed in successfully.", token + "|" + mail, "")
+                    Triple(true, if (token.isBlank()) "Request accepted. Check your email if confirmation is enabled." else "Signed in successfully.", token + "|" + mail)
                 } else {
                     val err = json.optString("msg").ifBlank { json.optString("message").ifBlank { json.optString("error_description").ifBlank { "Supabase returned HTTP " + code } } }
-                    Triple(false, err, "", "")
+                    Triple(false, err, "")
                 }
-            } catch (e: Exception) { Triple(false, e.message ?: "Connection failed.", "", "") }
+            } catch (e: Exception) { Triple(false, e.message ?: "Connection failed.", "") }
             finally { c?.disconnect() }
             Handler(context.mainLooper).post { done(result.first, result.second, result.third.substringBefore("|"), result.third.substringAfter("|", "")) }
         }
@@ -76,8 +76,8 @@ private object Supabase {
 
 @Composable private fun EzoneApp(context: Context) {
     val prefs = remember { context.getSharedPreferences("ezone", Context.MODE_PRIVATE) }
-    var url by remember { mutableStateOf(prefs.getString("url", "").orEmpty()) }
-    var key by remember { mutableStateOf(prefs.getString("key", "").orEmpty()) }
+    var url by remember { mutableStateOf(prefs.getString("url", "https://mfitbsoomnzcvhjdiujl.supabase.co").orEmpty()) }
+    var key by remember { mutableStateOf(prefs.getString("key", "sb_publishable_VDMBGM98M1bfhYOIvLoXrQ_BPD3-UvU").orEmpty()) }
     var email by remember { mutableStateOf(prefs.getString("email", "").orEmpty()) }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
