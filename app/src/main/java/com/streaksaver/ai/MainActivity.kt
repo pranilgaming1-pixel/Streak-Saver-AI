@@ -123,7 +123,7 @@ private object Supabase {
                                 Input(email, { email = it }, "Email address", KeyboardType.Email)
                                 Input(password, { password = it }, "Password", secret = true)
                                 if (message.isNotBlank()) { Text(message, color = if (message.contains("success", true) || message.contains("accepted", true)) cyan else Color(0xFFFFB0B0), fontSize = 12.sp); Spacer(Modifier.height(8.dp)) }
-                                Button(enabled = !busy, onClick = {
+                                Button(onClick = {
                                     if (email.isBlank() || password.length < 6) message = "Enter an email and password with at least 6 characters."
                                     else if (mode == "Create account" && (name.isBlank() || username.isBlank())) message = "Enter your name and username."
                                     else {
