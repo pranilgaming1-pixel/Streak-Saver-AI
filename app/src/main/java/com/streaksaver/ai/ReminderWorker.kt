@@ -33,8 +33,7 @@ class StreakReminderWorker(
                 val due = now.hour > friend.reminderHour ||
                     (now.hour == friend.reminderHour && now.minute >= friend.reminderMinute)
                 if (friend.reminderEnabled && due && friend.lastNotificationDate != today) {
-                    showReminder(friend)
-                    dao.markNotified(friend.id, today)
+                    if (showReminder(friend)) dao.markNotified(friend.id, today)
                 }
             }
             Result.success()
@@ -43,11 +42,11 @@ class StreakReminderWorker(
         }
     }
 
-    private fun showReminder(friend: FriendEntity) {
+    private fun showReminder(friend: FriendEntity): Boolean {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) return false
 
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
@@ -75,6 +74,7 @@ class StreakReminderWorker(
             .setAutoCancel(true)
             .build()
         manager.notify(friend.id.toInt(), notification)
+        return true
     }
 
     companion object {
