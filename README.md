@@ -1,9 +1,18 @@
 # Ezone
+Native Kotlin + Jetpack Compose Android app.
 
-Dark futuristic friends-first Android social app.
+## Supabase setup
+1. Create a project at https://supabase.com/dashboard.
+2. In Project Settings > API, copy the Project URL and anon/public (or publishable) client key.
+3. Open Ezone > Supabase connection settings and paste both values.
+4. Never put a service-role key or database password in the Android app.
+5. Run `supabase/schema.sql` in Supabase SQL Editor to create starter profiles and posts tables.
 
-Current preview includes a friends/story row, local feed, post composer, likes, explore/search mock people, inbox, local chat preview, profile and public/private visibility preview.
+## Implemented
+- Supabase email/password sign-up and sign-in.
+- Password recovery request.
+- Supabase project URL and public client key stored locally on device.
+- Starter SQL schema and row-level security policies.
 
-Important: this is currently an interactive local UI preview, not a production multi-user social network. Accounts, secure authentication, cross-device chat, media uploads, friend requests, notifications, moderation and server-enforced public/private privacy require a configured backend. No messages are delivered to other users yet.
-
-GitHub Actions builds a debug APK on pushes to development and main.
+## Not yet implemented
+The social feed, profile editing, follows, comments, media uploads, private follower approval, messaging, and notifications still need to be connected. Current starter post-read policy is for authenticated users and does not enforce private accounts.
