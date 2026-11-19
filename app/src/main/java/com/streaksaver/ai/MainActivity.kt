@@ -396,6 +396,8 @@ private fun EzoneMainScreen(
     var followingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var notifications by remember { mutableStateOf<List<EzoneNotification>>(emptyList()) }
     var isFollowingTarget by remember { mutableStateOf(false) }
+    var profileFollowerCount by remember { mutableIntStateOf(0) }
+    var profileFollowingCount by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var pageError by remember { mutableStateOf("") }
     var activeCommentsPost by remember { mutableStateOf<EzonePost?>(null) }
@@ -755,7 +757,9 @@ private fun EzoneMainScreen(
                                     }
                                 },
                                 onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) },
-                                postCount = profilePosts.size
+                                postCount = profilePosts.size,
+                                followerCount = profileFollowerCount,
+                                followingCount = profileFollowingCount
                             )
                             HorizontalDivider(color = EzoneLine)
                         } else {
@@ -849,8 +853,9 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
     val token = EzoneSession.accessToken
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            busy = true
             val mime = context.contentResolver.getType(uri).orEmpty()
+            if (!mime.startsWith("image/") && !mime.startsWith("video/")) { note = "Choose an image or video for your Story." ; return@rememberLauncherForActivityResult }
+            busy = true
             val type = if (mime.startsWith("video/")) "video" else "image"
             val ext = if (type == "video") "mp4" else if (mime.contains("png")) "png" else "jpg"
             val path = EzoneSession.userId + "/story_" + System.currentTimeMillis() + "." + ext
@@ -884,7 +889,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
         Spacer(Modifier.height(10.dp))
         androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable(enabled = !busy) { picker.launch("image/*") }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable(enabled = !busy) { picker.launch("*/*") }) {
                     Box(Modifier.size(58.dp).clip(CircleShape).background(EzoneSurface2), contentAlignment = Alignment.Center) {
                         Avatar(EzoneSession.email.take(1).uppercase(), 54)
                         Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(EzoneBlue), contentAlignment = Alignment.Center) { Text("+", color = Color(0xFF071017), fontWeight = FontWeight.Black) }
@@ -1201,7 +1206,9 @@ private fun ProfileHeader(
     onMessage: () -> Unit,
     onFollow: () -> Unit,
     onSignOut: () -> Unit,
-    postCount: Int = 0
+    postCount: Int = 0,
+    followerCount: Int = 0,
+    followingCount: Int = 0
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1230,8 +1237,8 @@ private fun ProfileHeader(
         Spacer(Modifier.height(22.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             ProfileStat(postCount.toString(), "posts")
-            ProfileStat("—", "followers")
-            ProfileStat("—", "following")
+            ProfileStat(followerCount.toString(), "followers")
+            ProfileStat(followingCount.toString(), "following")
         }
         Spacer(Modifier.height(18.dp))
         if (profile.bio.isNotBlank()) {

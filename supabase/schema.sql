@@ -289,7 +289,7 @@ values (
     'ezone-media',
     true,
     104857600,
-    array['image/jpeg','image/png','image/webp','image/heic','video/mp4','video/quicktime','video/webm']
+    array['image/jpeg','image/png','image/webp','image/heic','video/mp4','video/quicktime','video/webm','audio/mpeg','audio/mp4','audio/aac','audio/wav','audio/ogg','audio/webm','audio/x-m4a']
 )
 on conflict (id) do update set
     public = true,
