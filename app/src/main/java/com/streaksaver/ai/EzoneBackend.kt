@@ -8,11 +8,19 @@ import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okio.BufferedSink
+import okio.source
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 data class ApiResponse(val ok: Boolean, val status: Int, val body: String)
 data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null)
@@ -104,8 +112,14 @@ object EzoneBackend {
     const val DEFAULT_URL = "https://mfitbsoomnzcvhjdiujl.supabase.co"
     const val DEFAULT_KEY = "sb_publishable_VDMBGM98M1bfhYOIvLoXrQ_BPD3-UvU"
     const val MEDIA_BUCKET = "ezone-media"
+
     private val executor = Executors.newFixedThreadPool(4)
     private val main = Handler(Looper.getMainLooper())
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(90, TimeUnit.SECONDS)
+        .build()
 
     fun projectUrl(context: Context): String =
         context.getSharedPreferences("ezone", Context.MODE_PRIVATE).getString("url", DEFAULT_URL).orEmpty().trim().trimEnd('/')
@@ -137,70 +151,60 @@ object EzoneBackend {
         body: JSONObject?,
         prefer: String?
     ): ApiResponse {
-        var connection: HttpURLConnection? = null
         return try {
             val base = projectUrl(context)
             val key = publishableKey(context)
             if (!base.startsWith("https://") || key.isBlank()) {
                 return ApiResponse(false, 0, "Supabase URL or publishable key is missing. Open Connection settings.")
             }
-            connection = (URL(base + path).openConnection() as HttpURLConnection).apply {
-                requestMethod = method
-                connectTimeout = 20_000
-                readTimeout = 30_000
-                setRequestProperty("apikey", key)
-                setRequestProperty("Accept", "application/json")
-                if (token.isNotBlank()) setRequestProperty("Authorization", "Bearer " + token)
-                if (body != null) {
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                }
-                if (!prefer.isNullOrBlank()) setRequestProperty("Prefer", prefer)
+            val requestBody = body?.toString()?.toRequestBody("application/json; charset=utf-8".toMediaType())
+            val builder = Request.Builder()
+                .url(base + path)
+                .header("apikey", key)
+                .header("Accept", "application/json")
+            if (token.isNotBlank()) builder.header("Authorization", "Bearer " + token)
+            if (!prefer.isNullOrBlank()) builder.header("Prefer", prefer)
+            val request = builder.method(method.uppercase(), requestBody).build()
+            client.newCall(request).execute().use { response ->
+                ApiResponse(response.isSuccessful, response.code, response.body?.string().orEmpty())
             }
-            if (body != null) connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val responseBody = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            ApiResponse(status in 200..299, status, responseBody)
         } catch (e: Exception) {
             ApiResponse(false, 0, e.localizedMessage ?: "Network error. Check your connection.")
-        } finally {
-            connection?.disconnect()
         }
     }
 
     fun upload(context: Context, uri: Uri, remotePath: String, token: String, callback: (ApiResponse) -> Unit) {
         val appContext = context.applicationContext
         executor.execute {
-            var connection: HttpURLConnection? = null
             val response = try {
-                val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
                 val base = projectUrl(appContext)
                 val key = publishableKey(appContext)
-                val encodedPath = Uri.encode(remotePath, "/")
-                connection = (URL(base + "/storage/v1/object/" + MEDIA_BUCKET + "/" + encodedPath)
-                    .openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 30_000
-                    readTimeout = 90_000
-                    doOutput = true
-                    setChunkedStreamingMode(0)
-                    setRequestProperty("apikey", key)
-                    setRequestProperty("Authorization", "Bearer " + token)
-                    setRequestProperty("Content-Type", mime)
-                    setRequestProperty("x-upsert", "false")
+                if (!base.startsWith("https://") || key.isBlank()) {
+                    ApiResponse(false, 0, "Supabase URL or publishable key is missing.")
+                } else {
+                    val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
+                    val encodedPath = Uri.encode(remotePath, "/")
+                    val streamingBody = object : RequestBody() {
+                        override fun contentType() = mime.toMediaTypeOrNull()
+                        override fun writeTo(sink: BufferedSink) {
+                            val input = appContext.contentResolver.openInputStream(uri)
+                                ?: throw IllegalStateException("Could not read the selected media.")
+                            input.use { stream -> stream.source().use { source -> sink.writeAll(source) } }
+                        }
+                    }
+                    val request = Request.Builder()
+                        .url(base + "/storage/v1/object/" + MEDIA_BUCKET + "/" + encodedPath)
+                        .header("apikey", key)
+                        .header("Authorization", "Bearer " + token)
+                        .header("x-upsert", "false")
+                        .post(streamingBody)
+                        .build()
+                    client.newCall(request).execute().use { result ->
+                        ApiResponse(result.isSuccessful, result.code, result.body?.string().orEmpty())
+                    }
                 }
-                val input = appContext.contentResolver.openInputStream(uri)
-                    ?: throw IllegalStateException("Could not read the selected media.")
-                input.use { source -> connection.outputStream.use { output -> source.copyTo(output) } }
-                val status = connection.responseCode
-                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-                val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-                ApiResponse(status in 200..299, status, text)
             } catch (e: Exception) {
                 ApiResponse(false, 0, e.localizedMessage ?: "Media upload failed.")
-            } finally {
-                connection?.disconnect()
             }
             main.post { callback(response) }
         }

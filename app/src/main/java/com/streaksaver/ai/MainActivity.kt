@@ -395,6 +395,7 @@ private fun EzoneMainScreen(
     var activeCommentsPost by remember { mutableStateOf<EzonePost?>(null) }
     var editProfileOpen by remember { mutableStateOf(false) }
     var recoveryDialogOpen by remember { mutableStateOf(EzoneSession.recoveryMode) }
+    LaunchedEffect(EzoneSession.recoveryMode) { if (EzoneSession.recoveryMode) recoveryDialogOpen = true }
     val token = EzoneSession.accessToken
     val myId = EzoneSession.userId
 
