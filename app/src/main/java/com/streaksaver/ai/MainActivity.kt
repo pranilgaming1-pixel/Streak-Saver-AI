@@ -782,7 +782,7 @@ private fun EzoneMainScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
-                val selected = tab == item || (item == "Create" && tab == "Home")
+                val selected = tab == item
                 TextButton(onClick = {
                     tab = item
                     if (item == "Profile") targetProfileId = myId
