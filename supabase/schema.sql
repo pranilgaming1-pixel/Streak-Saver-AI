@@ -331,3 +331,42 @@ using (
 );
 
 -- Security note: do not put the Supabase service_role key in this Android app.
+
+
+-- Private direct messaging: only sender and receiver can read a message.
+create table if not exists public.direct_messages (
+    id uuid primary key default gen_random_uuid(),
+    sender_id uuid not null references public.profiles(id) on delete cascade,
+    receiver_id uuid not null references public.profiles(id) on delete cascade,
+    body text not null check (length(btrim(body)) > 0 and length(body) <= 2000),
+    created_at timestamptz not null default now(),
+    constraint direct_messages_no_self check (sender_id <> receiver_id)
+);
+create index if not exists direct_messages_sender_created_idx on public.direct_messages(sender_id, created_at desc);
+create index if not exists direct_messages_receiver_created_idx on public.direct_messages(receiver_id, created_at desc);
+alter table public.direct_messages enable row level security;
+drop policy if exists "Ezone participants read their messages" on public.direct_messages;
+drop policy if exists "Ezone sender sends direct message" on public.direct_messages;
+create policy "Ezone participants read their messages"
+on public.direct_messages for select to authenticated
+using (auth.uid() = sender_id or auth.uid() = receiver_id);
+create policy "Ezone sender sends direct message"
+on public.direct_messages for insert to authenticated
+with check (auth.uid() = sender_id and sender_id <> receiver_id);
+
+alter table public.notifications drop constraint if exists notifications_type_check;
+alter table public.notifications add constraint notifications_type_check
+check (type in ('follow','like','comment','message'));
+
+create or replace function public.ezone_notify_message()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+    insert into public.notifications(user_id, actor_id, type, message)
+    values (new.receiver_id, new.sender_id, 'message', 'You received a new message');
+    return new;
+end;
+$$;
+drop trigger if exists ezone_message_notification on public.direct_messages;
+create trigger ezone_message_notification after insert on public.direct_messages
+for each row execute procedure public.ezone_notify_message();

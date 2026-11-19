@@ -382,6 +382,9 @@ private fun EzoneMainScreen(
     var feedMode by remember { mutableStateOf("For you") }
     var reloadKey by remember { mutableIntStateOf(0) }
     var targetProfileId by remember { mutableStateOf(EzoneSession.userId) }
+    var messagesOpen by remember { mutableStateOf(false) }
+    var chatUserId by remember { mutableStateOf("") }
+    var chatUserName by remember { mutableStateOf("Ezone member") }
     var profile by remember { mutableStateOf<EzoneProfile?>(null) }
     var profilePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
@@ -501,7 +504,11 @@ private fun EzoneMainScreen(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Ezone", color = EzoneWhite, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.7).sp, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text("ezone", color = EzoneWhite, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.7).sp)
+                Text("YOUR WORLD, YOUR PEOPLE", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.8.sp)
+            }
+            TextButton(onClick = { messagesOpen = true }) { Text("✉", color = EzoneBlue, fontSize = 23.sp) }
             Box(Modifier.size(7.dp).background(EzoneBlue, CircleShape))
             Spacer(Modifier.width(6.dp))
             Text("BETA", color = EzoneMuted, fontSize = 9.sp, letterSpacing = 1.5.sp)
@@ -647,6 +654,7 @@ private fun EzoneMainScreen(
                                 isOwn = targetProfileId == myId,
                                 isFollowing = isFollowingTarget,
                                 onEdit = { editProfileOpen = true },
+                                onMessage = { messagesOpen = true; chatUserId = targetProfileId; chatUserName = profile!!.displayName },
                                 onFollow = {
                                     val isFollowing = isFollowingTarget
                                     val method = if (isFollowing) "DELETE" else "POST"
@@ -711,6 +719,12 @@ private fun EzoneMainScreen(
         }
     }
 
+    if (messagesOpen) {
+        MessagesScreen(context, onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false })
+    }
+    if (chatUserId.isNotBlank()) {
+        DirectChatDialog(context, chatUserId, chatUserName, onDismiss = { chatUserId = "" })
+    }
     if (activeCommentsPost != null) {
         CommentsDialog(
             context = context,
@@ -991,6 +1005,7 @@ private fun ProfileHeader(
     isOwn: Boolean,
     isFollowing: Boolean,
     onEdit: () -> Unit,
+    onMessage: () -> Unit,
     onFollow: () -> Unit,
     onSignOut: () -> Unit
 ) {
@@ -1005,11 +1020,16 @@ private fun ProfileHeader(
             if (isOwn) {
                 TextButton(onClick = onEdit) { Text("Edit", color = EzoneBlue) }
             } else {
-                Button(onClick = onFollow, colors = ButtonDefaults.buttonColors(
+                Column(horizontalAlignment = Alignment.End) {
+                    OutlinedButton(onClick = onMessage, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
+                        Text("Message", color = EzoneBlue, fontSize = 11.sp)
+                    }
+                    Button(onClick = onFollow, colors = ButtonDefaults.buttonColors(
                     containerColor = if (isFollowing) EzoneSurface2 else EzoneBlue,
                     contentColor = if (isFollowing) EzoneWhite else Color(0xFF061018)
                 )) {
                     Text(if (isFollowing) "Following" else "Follow", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
