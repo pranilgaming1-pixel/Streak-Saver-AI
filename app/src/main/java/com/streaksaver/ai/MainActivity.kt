@@ -388,6 +388,8 @@ private fun EzoneMainScreen(
     var profile by remember { mutableStateOf<EzoneProfile?>(null) }
     var profilePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var explorePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var reelPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var searchText by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<EzoneProfile>>(emptyList()) }
     var followingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -448,6 +450,30 @@ private fun EzoneMainScreen(
                         val arr = try { JSONArray(follows.body) } catch (_: Exception) { JSONArray() }
                         followingIds = (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("following_id") }.toSet()
                     }
+                }
+            }
+            "Explore" -> {
+                loading = true
+                EzoneBackend.request(
+                    context, "GET",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
+                    token
+                ) { result ->
+                    loading = false
+                    if (result.ok) explorePosts = EzoneBackend.parsePosts(result.body)
+                    else pageError = EzoneBackend.errorMessage(result, "Could not load Explore.")
+                }
+            }
+            "Reels" -> {
+                loading = true
+                EzoneBackend.request(
+                    context, "GET",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_type=eq.video&order=created_at.desc&limit=60",
+                    token
+                ) { result ->
+                    loading = false
+                    if (result.ok) reelPosts = EzoneBackend.parsePosts(result.body)
+                    else pageError = EzoneBackend.errorMessage(result, "Could not load Reels.")
                 }
             }
             "Profile" -> {
@@ -559,6 +585,46 @@ private fun EzoneMainScreen(
                             )
                             HorizontalDivider(color = EzoneLine)
                         }
+                    }
+                    if (pageError.isNotBlank()) item { ErrorLine(pageError) }
+                }
+            }
+            "Explore" -> {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Explore", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                            Text("Discover photos and videos shared by Ezone members.", color = EzoneMuted, fontSize = 12.sp)
+                        }
+                    }
+                    if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
+                    if (explorePosts.isEmpty() && !loading) item { EmptyState("Your Explore is waiting", "When members share photos and videos, they will appear here.") }
+                    items(explorePosts, key = { it.id }) { post ->
+                        PostCard(context, post, myId,
+                            onLike = { likePost(context, token, myId, post) { reloadKey++ } },
+                            onComments = { activeCommentsPost = post },
+                            onProfile = { id -> targetProfileId = id; tab = "Profile" })
+                        HorizontalDivider(color = EzoneLine)
+                    }
+                    if (pageError.isNotBlank()) item { ErrorLine(pageError) }
+                }
+            }
+            "Reels" -> {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                            Text("Reels", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                            Text("Short videos from the Ezone community.", color = EzoneMuted, fontSize = 12.sp)
+                        }
+                    }
+                    if (loading && reelPosts.isEmpty()) item { LoadingLine("Loading Reels…") }
+                    if (reelPosts.isEmpty() && !loading) item { EmptyState("No Reels yet", "Video posts shared by real members will appear here.") }
+                    items(reelPosts, key = { it.id }) { post ->
+                        PostCard(context, post, myId,
+                            onLike = { likePost(context, token, myId, post) { reloadKey++ } },
+                            onComments = { activeCommentsPost = post },
+                            onProfile = { id -> targetProfileId = id; tab = "Profile" })
+                        HorizontalDivider(color = EzoneLine)
                     }
                     if (pageError.isNotBlank()) item { ErrorLine(pageError) }
                 }
@@ -693,7 +759,7 @@ private fun EzoneMainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("Home", "Search", "Create", "Activity", "Profile").forEach { item ->
+            listOf("Home", "Search", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item || (item == "Create" && tab == "Home")
                 TextButton(onClick = {
                     if (item == "Create") tab = "Home" else tab = item
@@ -704,6 +770,8 @@ private fun EzoneMainScreen(
                             when (item) {
                                 "Home" -> "⌂"
                                 "Search" -> "⌕"
+                                "Explore" -> "▦"
+                                "Reels" -> "▶"
                                 "Create" -> "+"
                                 "Activity" -> "♡"
                                 else -> "◉"

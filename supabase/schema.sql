@@ -370,3 +370,196 @@ $$;
 drop trigger if exists ezone_message_notification on public.direct_messages;
 create trigger ezone_message_notification after insert on public.direct_messages
 for each row execute procedure public.ezone_notify_message();
+
+
+-- Ezone social feature pack: Stories, Highlights, saved posts, reposts,
+-- Notes, hashtags, polls, blocking and moderation reports.
+create table if not exists public.stories (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    media_path text not null,
+    media_type text not null check (media_type in ('image','video')),
+    caption text not null default '',
+    audience text not null default 'followers' check (audience in ('followers','close_friends','public')),
+    created_at timestamptz not null default now(),
+    expires_at timestamptz not null default (now() + interval '24 hours')
+);
+create index if not exists stories_expiry_idx on public.stories(expires_at desc);
+create index if not exists stories_user_created_idx on public.stories(user_id, created_at desc);
+alter table public.stories enable row level security;
+drop policy if exists "Ezone members read active stories" on public.stories;
+drop policy if exists "Ezone members publish own stories" on public.stories;
+drop policy if exists "Ezone members delete own stories" on public.stories;
+create policy "Ezone members read active stories" on public.stories
+for select to authenticated using (
+    expires_at > now() and (
+        audience = 'public' or user_id = auth.uid() or
+        (audience = 'followers' and exists (
+            select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = stories.user_id
+        ))
+    )
+);
+create policy "Ezone members publish own stories" on public.stories
+for insert to authenticated with check (auth.uid() = user_id);
+create policy "Ezone members delete own stories" on public.stories
+for delete to authenticated using (auth.uid() = user_id);
+
+create table if not exists public.story_views (
+    story_id uuid not null references public.stories(id) on delete cascade,
+    viewer_id uuid not null references public.profiles(id) on delete cascade,
+    viewed_at timestamptz not null default now(),
+    primary key(story_id, viewer_id)
+);
+alter table public.story_views enable row level security;
+drop policy if exists "Ezone viewers record story views" on public.story_views;
+drop policy if exists "Ezone owners see story views" on public.story_views;
+create policy "Ezone viewers record story views" on public.story_views
+for insert to authenticated with check (auth.uid() = viewer_id);
+create policy "Ezone owners see story views" on public.story_views
+for select to authenticated using (
+    viewer_id = auth.uid() or exists (select 1 from public.stories s where s.id = story_id and s.user_id = auth.uid())
+);
+
+create table if not exists public.story_highlights (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    title text not null check (length(btrim(title)) between 1 and 40),
+    cover_url text,
+    created_at timestamptz not null default now()
+);
+create table if not exists public.story_highlight_items (
+    highlight_id uuid not null references public.story_highlights(id) on delete cascade,
+    story_id uuid not null references public.stories(id) on delete cascade,
+    position integer not null default 0,
+    primary key(highlight_id, story_id)
+);
+alter table public.story_highlights enable row level security;
+alter table public.story_highlight_items enable row level security;
+drop policy if exists "Ezone highlights are visible" on public.story_highlights;
+drop policy if exists "Ezone users manage own highlights" on public.story_highlights;
+drop policy if exists "Ezone highlight items are visible" on public.story_highlight_items;
+create policy "Ezone highlights are visible" on public.story_highlights for select to authenticated using (true);
+create policy "Ezone users manage own highlights" on public.story_highlights for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Ezone highlight items are visible" on public.story_highlight_items for select to authenticated using (true);
+
+create table if not exists public.saved_posts (
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    post_id uuid not null references public.posts(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key(user_id, post_id)
+);
+alter table public.saved_posts enable row level security;
+drop policy if exists "Ezone users manage their saved posts" on public.saved_posts;
+create policy "Ezone users manage their saved posts" on public.saved_posts
+for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists public.post_reposts (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    post_id uuid not null references public.posts(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    unique(user_id, post_id)
+);
+alter table public.post_reposts enable row level security;
+drop policy if exists "Ezone reposts visible to members" on public.post_reposts;
+drop policy if exists "Ezone users manage own reposts" on public.post_reposts;
+create policy "Ezone reposts visible to members" on public.post_reposts for select to authenticated using (true);
+create policy "Ezone users manage own reposts" on public.post_reposts
+for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists public.user_notes (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    body text not null check (length(btrim(body)) between 1 and 80),
+    created_at timestamptz not null default now(),
+    expires_at timestamptz not null default (now() + interval '24 hours')
+);
+create index if not exists user_notes_expiry_idx on public.user_notes(expires_at desc);
+alter table public.user_notes enable row level security;
+drop policy if exists "Ezone members read active notes" on public.user_notes;
+drop policy if exists "Ezone users manage own notes" on public.user_notes;
+create policy "Ezone members read active notes" on public.user_notes for select to authenticated using (expires_at > now());
+create policy "Ezone users manage own notes" on public.user_notes
+for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists public.hashtags (
+    id uuid primary key default gen_random_uuid(),
+    tag text not null unique check (tag = lower(tag) and length(tag) between 1 and 40)
+);
+create table if not exists public.post_hashtags (
+    post_id uuid not null references public.posts(id) on delete cascade,
+    hashtag_id uuid not null references public.hashtags(id) on delete cascade,
+    primary key(post_id, hashtag_id)
+);
+alter table public.hashtags enable row level security;
+alter table public.post_hashtags enable row level security;
+drop policy if exists "Ezone hashtags readable" on public.hashtags;
+drop policy if exists "Ezone post hashtags readable" on public.post_hashtags;
+create policy "Ezone hashtags readable" on public.hashtags for select to authenticated using (true);
+create policy "Ezone post hashtags readable" on public.post_hashtags for select to authenticated using (true);
+
+create table if not exists public.post_polls (
+    id uuid primary key default gen_random_uuid(),
+    post_id uuid not null unique references public.posts(id) on delete cascade,
+    question text not null check (length(btrim(question)) between 1 and 180),
+    expires_at timestamptz
+);
+create table if not exists public.poll_options (
+    id uuid primary key default gen_random_uuid(),
+    poll_id uuid not null references public.post_polls(id) on delete cascade,
+    label text not null check (length(btrim(label)) between 1 and 80)
+);
+create table if not exists public.poll_votes (
+    poll_id uuid not null references public.post_polls(id) on delete cascade,
+    option_id uuid not null references public.poll_options(id) on delete cascade,
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key(poll_id, user_id)
+);
+alter table public.post_polls enable row level security;
+alter table public.poll_options enable row level security;
+alter table public.poll_votes enable row level security;
+drop policy if exists "Ezone polls readable" on public.post_polls;
+drop policy if exists "Ezone poll options readable" on public.poll_options;
+drop policy if exists "Ezone members read poll votes" on public.poll_votes;
+drop policy if exists "Ezone members vote once" on public.poll_votes;
+create policy "Ezone polls readable" on public.post_polls for select to authenticated using (true);
+create policy "Ezone poll options readable" on public.poll_options for select to authenticated using (true);
+create policy "Ezone members read poll votes" on public.poll_votes for select to authenticated using (true);
+create policy "Ezone members vote once" on public.poll_votes for insert to authenticated with check (auth.uid() = user_id);
+
+create table if not exists public.blocked_users (
+    blocker_id uuid not null references public.profiles(id) on delete cascade,
+    blocked_id uuid not null references public.profiles(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key(blocker_id, blocked_id),
+    check(blocker_id <> blocked_id)
+);
+alter table public.blocked_users enable row level security;
+drop policy if exists "Ezone users manage their blocks" on public.blocked_users;
+create policy "Ezone users manage their blocks" on public.blocked_users
+for all to authenticated using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
+
+create table if not exists public.content_reports (
+    id uuid primary key default gen_random_uuid(),
+    reporter_id uuid not null references public.profiles(id) on delete cascade,
+    post_id uuid references public.posts(id) on delete cascade,
+    reported_user_id uuid references public.profiles(id) on delete cascade,
+    reason text not null check (reason in ('spam','harassment','nudity','violence','scam','other')),
+    details text not null default '',
+    status text not null default 'open' check (status in ('open','reviewing','resolved','dismissed')),
+    created_at timestamptz not null default now(),
+    check(post_id is not null or reported_user_id is not null)
+);
+alter table public.content_reports enable row level security;
+drop policy if exists "Ezone members submit reports" on public.content_reports;
+drop policy if exists "Ezone reporters view own reports" on public.content_reports;
+create policy "Ezone members submit reports" on public.content_reports
+for insert to authenticated with check (auth.uid() = reporter_id);
+create policy "Ezone reporters view own reports" on public.content_reports
+for select to authenticated using (auth.uid() = reporter_id);
+
+-- Extend notifications to cover the newer social interactions.
+alter table public.notifications drop constraint if exists notifications_type_check;
+alter table public.notifications add constraint notifications_type_check
+check (type in ('follow','like','comment','message','repost','story_reply','mention'));
