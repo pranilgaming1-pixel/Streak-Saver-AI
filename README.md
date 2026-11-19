@@ -30,3 +30,8 @@ GitHub Actions runs \`.github/workflows/android.yml\` for pushes to \`developmen
 ## Known external configuration
 
 Google OAuth will not complete until the Google provider is enabled and configured in the Supabase dashboard. Email confirmation and password reset email delivery depend on the Supabase Auth email settings for the project.
+
+
+## Private messaging
+
+The Android app includes an inbox shortcut in the top bar and a **Message** action on other members' profiles. Messages are stored in the Supabase `direct_messages` table. Row Level Security allows only the sender and receiver to read a conversation; authenticated users can send only as themselves. Run the latest `supabase/schema.sql` migration to enable messaging. The app intentionally does not create sample accounts or fake conversations.
