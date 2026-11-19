@@ -1,6 +1,8 @@
 package com.streaksaver.ai
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import androidx.activity.ComponentActivity
@@ -32,7 +34,7 @@ import java.util.concurrent.Executors
 private val ink = Color(0xFF050505)
 private val card = Color(0xFF101010)
 private val soft = Color(0xFF9B9B9B)
-private val accent = Color(0xFFB8A5FF)
+private val accent = Color(0xFF8EDBFF)
 private val white = Color(0xFFF7F7F7)
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +42,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.BLACK
         window.navigationBarColor = android.graphics.Color.BLACK
+        handleOAuthCallback(intent)
         setContent { EzoneApp(this) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleOAuthCallback(intent)
+    }
+
+    private fun handleOAuthCallback(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "ezone" || uri.host != "auth") return
+        val params = uri.fragment.orEmpty().split("&").mapNotNull { part ->
+            val pair = part.split("=", limit = 2)
+            if (pair.size == 2) pair[0] to Uri.decode(pair[1]) else null
+        }.toMap()
+        val access = params["access_token"].orEmpty()
+        if (access.isNotBlank()) getSharedPreferences("ezone", Context.MODE_PRIVATE).edit()
+            .putString("token", access).putString("email", "Google account").apply()
     }
 }
 
@@ -123,7 +144,7 @@ private fun EzoneApp(context: Context) {
                     message = ""
                 })
             } else {
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171321), ink, ink)))) {
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF10212B), Color(0xFF070B0E), ink)))) {
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,7 +153,7 @@ private fun EzoneApp(context: Context) {
                         Spacer(Modifier.height(42.dp))
                         Text("ezone", color = white, fontSize = 43.sp, fontWeight = FontWeight.Black, letterSpacing = (-2).sp)
                         Spacer(Modifier.height(5.dp))
-                        Text("Share your world.", color = soft, fontSize = 14.sp)
+                        Text("A place for your people.", color = Color(0xFFB5DFF0), fontSize = 14.sp)
                         Spacer(Modifier.height(34.dp))
 
                         if (settingsOpen) {
@@ -209,6 +230,30 @@ private fun EzoneApp(context: Context) {
                                     }
                                 }) { Text("Forgot password?", color = soft, fontSize = 12.sp) }
                             }
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                HorizontalDivider(Modifier.weight(1f), color = Color(0xFF303030))
+                                Text("  OR  ", color = soft, fontSize = 10.sp)
+                                HorizontalDivider(Modifier.weight(1f), color = Color(0xFF303030))
+                            }
+                            Spacer(Modifier.height(14.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    val callback = Uri.encode("ezone://auth")
+                                    val authUrl = projectUrl.trim().trimEnd('/') + "/auth/v1/authorize?provider=google&redirect_to=" + callback
+                                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))) }
+                                    catch (_: Exception) { message = "Could not open browser for Google sign-in." }
+                                },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(9.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = white),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF536B78))
+                            ) {
+                                Text("G", color = Color(0xFF8EDBFF), fontWeight = FontWeight.Black, fontSize = 18.sp)
+                                Spacer(Modifier.width(10.dp))
+                                Text("Continue with Google", color = white, fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(Modifier.height(14.dp))
                             HorizontalDivider(color = Color(0xFF303030), modifier = Modifier.padding(vertical = 18.dp))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                                 Text(if (mode == "login") "Don't have an account? " else "Already have an account? ", color = soft, fontSize = 13.sp)
@@ -224,7 +269,7 @@ private fun EzoneApp(context: Context) {
                             }
                         }
                         Spacer(Modifier.height(30.dp))
-                        Text("CONTINUE WITH EMAIL", color = Color(0xFF686868), fontSize = 10.sp, letterSpacing = 2.sp)
+                        Text("BLACK · WHITE · ICE BLUE", color = Color(0xFF7FBDD6), fontSize = 10.sp, letterSpacing = 2.sp)
                         Spacer(Modifier.height(12.dp))
                         Text("By continuing, you agree to Ezone's Terms and Privacy Policy.", color = Color(0xFF666666), fontSize = 10.sp, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(30.dp))
@@ -262,9 +307,9 @@ private fun PrimaryAction(label: String, disabled: Boolean, onClick: () -> Unit)
         enabled = !disabled,
         modifier = Modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(9.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7255D8), disabledContainerColor = Color(0xFF40365E))
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8EDBFF), contentColor = Color(0xFF061018), disabledContainerColor = Color(0xFF35596A))
     ) {
-        Text(label, color = white, fontWeight = FontWeight.Bold)
+        Text(label, color = Color(0xFF061018), fontWeight = FontWeight.Bold)
     }
 }
 
