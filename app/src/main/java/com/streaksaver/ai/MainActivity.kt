@@ -315,18 +315,77 @@ private fun PrimaryAction(label: String, disabled: Boolean, onClick: () -> Unit)
 
 @Composable
 private fun ThreadsHome(email: String, onSignOut: () -> Unit) {
+    var selectedTab by remember { mutableStateOf("Home") }
+    var draft by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().background(ink)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Threads", color = white, fontSize = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-            TextButton(onClick = onSignOut) { Text("Log out", color = soft) }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Ezone", color = white, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp, modifier = Modifier.weight(1f))
+            Text("●", color = accent, fontSize = 12.sp)
+            Spacer(Modifier.width(7.dp))
+            TextButton(onClick = onSignOut) { Text("Log out", color = soft, fontSize = 12.sp) }
         }
-        HorizontalDivider(color = Color(0xFF242424))
-        Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text("Welcome to Ezone", color = white, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(email, color = soft, fontSize = 13.sp)
-            Spacer(Modifier.height(12.dp))
-            Text("Your account is signed in. The real social feed, posting, following and media upload are the next development stage.", color = soft, fontSize = 14.sp, textAlign = TextAlign.Center)
+        HorizontalDivider(color = Color(0xFF292929))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            listOf("For you", "Following").forEach { tab ->
+                TextButton(onClick = { selectedTab = tab }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(tab, color = if (selectedTab == tab) white else soft, fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal)
+                        Spacer(Modifier.height(3.dp))
+                        if (selectedTab == tab) Box(Modifier.width(42.dp).height(2.dp).background(accent, RoundedCornerShape(2.dp)))
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color = Color(0xFF292929))
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.Top) {
+            Box(Modifier.size(42.dp).background(Color(0xFF1C3541), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                Text(email.firstOrNull()?.uppercase() ?: "E", color = accent, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(email.substringBefore("@").ifBlank { "Your profile" }, color = white, fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    placeholder = { Text("What's happening?", color = soft) },
+                    minLines = 2,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = white, unfocusedTextColor = white,
+                        focusedBorderColor = Color(0xFF536B78), unfocusedBorderColor = Color(0xFF303030),
+                        focusedContainerColor = ink, unfocusedContainerColor = ink
+                    )
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Share your thoughts", color = soft, fontSize = 11.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Button(onClick = { }, enabled = false, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 5.dp), colors = ButtonDefaults.buttonColors(disabledContainerColor = Color(0xFF263D49))) {
+                        Text("Post", color = Color(0xFF9CBAC8))
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color = Color(0xFF292929))
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(30.dp)) {
+                Text("Your Ezone starts here", color = white, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Your feed will show posts from real people you follow. No sample accounts or bot friends.",
+                    color = soft, fontSize = 13.sp, textAlign = TextAlign.Center
+                )
+            }
+        }
+        HorizontalDivider(color = Color(0xFF292929))
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            listOf("Home", "Search", "Create", "Activity", "Profile").forEach { item ->
+                TextButton(onClick = { selectedTab = item }) {
+                    Text(item, color = if (selectedTab == item) accent else soft, fontSize = 11.sp, fontWeight = if (selectedTab == item) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
         }
     }
 }
