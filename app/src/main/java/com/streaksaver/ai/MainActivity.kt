@@ -533,7 +533,7 @@ private fun EzoneMainScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text("ezone", color = EzoneWhite, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.7).sp)
-                Text("YOUR WORLD, YOUR PEOPLE", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.8.sp)
+                Text("YOUR WORLD. YOUR PEOPLE.", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.5.sp)
             }
             TextButton(onClick = { messagesOpen = true }) { Text("✉", color = EzoneBlue, fontSize = 23.sp) }
             Box(Modifier.size(7.dp).background(EzoneBlue, CircleShape))
@@ -566,10 +566,6 @@ private fun EzoneMainScreen(
                         StoriesRail(context = context, onStoryPosted = { reloadKey++ }, onOpenProfile = { id -> targetProfileId = id; tab = "Profile" })
                         HorizontalDivider(color = EzoneLine)
                     }
-                    item {
-                        PostComposer(context, onPosted = { reloadKey++ })
-                        HorizontalDivider(color = EzoneLine)
-                    }
                     if (loading && feedPosts.isEmpty()) {
                         item { LoadingLine("Loading your feed…") }
                     } else if (feedPosts.isEmpty()) {
@@ -592,6 +588,18 @@ private fun EzoneMainScreen(
                         }
                     }
                     if (pageError.isNotBlank()) item { ErrorLine(pageError) }
+                }
+            }
+            "Create" -> {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
+                            Text("Create a post", color = EzoneWhite, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                            Text("Share a moment with your Ezone community.", color = EzoneMuted, fontSize = 12.sp)
+                        }
+                        HorizontalDivider(color = EzoneLine)
+                        PostComposer(context, onPosted = { tab = "Home"; reloadKey++ })
+                    }
                 }
             }
             "Explore" -> {
@@ -776,7 +784,7 @@ private fun EzoneMainScreen(
             listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item || (item == "Create" && tab == "Home")
                 TextButton(onClick = {
-                    if (item == "Create") tab = "Home" else tab = item
+                    tab = item
                     if (item == "Profile") targetProfileId = myId
                 }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1044,7 +1052,7 @@ private fun PostCard(
 ) {
     val author = post.author
     val liked = myId in post.likedBy
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp).clip(RoundedCornerShape(18.dp)).background(EzoneSurface).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 40, author?.avatarUrl)
             Spacer(Modifier.width(10.dp))
@@ -1066,12 +1074,12 @@ private fun PostCard(
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = "Post photo",
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 390.dp).clip(RoundedCornerShape(14.dp)),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
-                    Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(14.dp))
+                    Modifier.fillMaxWidth().height(235.dp).clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF14222A)).clickable {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(mediaUrl), "video/*"))
