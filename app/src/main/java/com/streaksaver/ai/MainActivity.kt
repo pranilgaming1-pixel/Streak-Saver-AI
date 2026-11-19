@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -424,7 +425,7 @@ private fun EzoneMainScreen(
                                 val inFilter = ids.joinToString(",")
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
+                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
                                     token
                                 ) { result ->
                                     loading = false
@@ -437,7 +438,7 @@ private fun EzoneMainScreen(
                 } else {
                     EzoneBackend.request(
                         context, "GET",
-                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&order=created_at.desc&limit=50",
+                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&order=created_at.desc&limit=50",
                         token
                     ) { result ->
                         loading = false
@@ -456,7 +457,7 @@ private fun EzoneMainScreen(
                 loading = true
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
                     token
                 ) { result ->
                     loading = false
@@ -468,7 +469,7 @@ private fun EzoneMainScreen(
                 loading = true
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_type=eq.video&order=created_at.desc&limit=60",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_type=eq.video&order=created_at.desc&limit=60",
                     token
                 ) { result ->
                     loading = false
@@ -487,7 +488,7 @@ private fun EzoneMainScreen(
                     else pageError = EzoneBackend.errorMessage(result, "Could not load this profile.")
                     EzoneBackend.request(
                         context, "GET",
-                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50",
+                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50",
                         token
                     ) { postResult ->
                         loading = false
@@ -562,6 +563,10 @@ private fun EzoneMainScreen(
                 HorizontalDivider(color = EzoneLine)
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     item {
+                        StoriesRail(context = context, onStoryPosted = { reloadKey++ }, onOpenProfile = { id -> targetProfileId = id; tab = "Profile" })
+                        HorizontalDivider(color = EzoneLine)
+                    }
+                    item {
                         PostComposer(context, onPosted = { reloadKey++ })
                         HorizontalDivider(color = EzoneLine)
                     }
@@ -595,6 +600,14 @@ private fun EzoneMainScreen(
                         Column(Modifier.fillMaxWidth().padding(18.dp)) {
                             Text("Explore", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
                             Text("Discover photos and videos shared by Ezone members.", color = EzoneMuted, fontSize = 12.sp)
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("For you", "Reels").forEach { filter ->
+                                    Surface(color = if (filter == "For you") Color(0xFF183542) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
+                                        Text(filter, color = if (filter == "For you") EzoneBlue else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
+                                    }
+                                }
+                            }
                         }
                     }
                     if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
@@ -733,7 +746,8 @@ private fun EzoneMainScreen(
                                         else pageError = EzoneBackend.errorMessage(result, "Could not update follow.")
                                     }
                                 },
-                                onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
+                                onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) },
+                                postCount = profilePosts.size
                             )
                             HorizontalDivider(color = EzoneLine)
                         } else {
@@ -759,7 +773,7 @@ private fun EzoneMainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("Home", "Search", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
+            listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item || (item == "Create" && tab == "Home")
                 TextButton(onClick = {
                     if (item == "Create") tab = "Home" else tab = item
@@ -770,8 +784,7 @@ private fun EzoneMainScreen(
                             when (item) {
                                 "Home" -> "⌂"
                                 "Search" -> "⌕"
-                                "Explore" -> "▦"
-                                "Reels" -> "▶"
+                                "Explore" -> "⌕"
                                 "Create" -> "+"
                                 "Activity" -> "♡"
                                 else -> "◉"
@@ -821,10 +834,92 @@ private fun EzoneMainScreen(
 }
 
 @Composable
+private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfile: (String) -> Unit) {
+    var stories by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var busy by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }
+    val token = EzoneSession.accessToken
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            busy = true
+            val mime = context.contentResolver.getType(uri).orEmpty()
+            val type = if (mime.startsWith("video/")) "video" else "image"
+            val ext = if (type == "video") "mp4" else if (mime.contains("png")) "png" else "jpg"
+            val path = EzoneSession.userId + "/story_" + System.currentTimeMillis() + "." + ext
+            EzoneBackend.upload(context, uri, path, token) { uploaded ->
+                if (!uploaded.ok) { busy = false; note = EzoneBackend.errorMessage(uploaded, "Story upload failed.") }
+                else {
+                    val body = JSONObject().put("user_id", EzoneSession.userId).put("media_path", path).put("media_type", type).put("audience", "followers")
+                    EzoneBackend.request(context, "POST", "/rest/v1/stories", token, body, "return=minimal") { created ->
+                        busy = false
+                        if (created.ok) { note = "Story shared for 24 hours."; onStoryPosted() }
+                        else note = EzoneBackend.errorMessage(created, "Could not publish story. Run the latest Supabase schema.")
+                    }
+                }
+            }
+        }
+    }
+    LaunchedEffect(EzoneSession.userId) {
+        EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,created_at,profiles(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
+            if (result.ok) {
+                val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
+                stories = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+            } else note = EzoneBackend.errorMessage(result, "Could not load Stories. Run the latest schema.")
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Stories", color = EzoneWhite, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(Modifier.weight(1f))
+            Text(if (busy) "Uploading…" else "24 hours", color = EzoneMuted, fontSize = 10.sp)
+        }
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable(enabled = !busy) { picker.launch("image/*") }) {
+                    Box(Modifier.size(58.dp).clip(CircleShape).background(EzoneSurface2), contentAlignment = Alignment.Center) {
+                        Avatar(EzoneSession.email.take(1).uppercase(), 54)
+                        Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(EzoneBlue), contentAlignment = Alignment.Center) { Text("+", color = Color(0xFF071017), fontWeight = FontWeight.Black) }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("Your story", color = EzoneMuted, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+            items(stories) { story ->
+                val owner = story.optJSONObject("profiles")
+                val username = owner?.optString("username").orEmpty().ifBlank { "Member" }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable {
+                    val media = EzoneBackend.mediaUrl(context, story.optString("media_path"))
+                    try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(media), if (story.optString("media_type") == "video") "video/*" else "image/*")) }
+                    catch (_: Exception) { note = "No app available to open this Story." }
+                }) {
+                    Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneBlue, Color(0xFF365E7B)))).padding(3.dp)) {
+                        Box(Modifier.fillMaxSize().clip(CircleShape).background(EzoneBlack), contentAlignment = Alignment.Center) { Avatar(username.take(1).uppercase(), 48, owner?.optString("avatar_url")) }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text(username, color = EzoneMuted, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
+        if (note.isNotBlank()) Text(note, color = EzoneBlue, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+    }
+}
+
+private fun queryDisplayName(context: Context, uri: Uri): String {
+    return try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
+        }.orEmpty()
+    } catch (_: Exception) { "" }
+}
+
+@Composable
 private fun PostComposer(context: Context, onPosted: () -> Unit) {
     var draft by remember { mutableStateOf("") }
     var attachment by remember { mutableStateOf<Uri?>(null) }
     var attachmentType by remember { mutableStateOf("image") }
+    var musicAttachment by remember { mutableStateOf<Uri?>(null) }
+    var musicTitle by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     val token = EzoneSession.accessToken
@@ -833,6 +928,9 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
     }
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) { attachment = uri; attachmentType = "video"; message = "" }
+    }
+    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) { musicAttachment = uri; musicTitle = queryDisplayName(context, uri).ifBlank { "Selected audio" }; message = "" }
     }
 
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
@@ -874,33 +972,39 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(enabled = !busy, onClick = { photoPicker.launch("image/*") }) { Text("＋ Photo", color = EzoneBlue, fontSize = 12.sp) }
             TextButton(enabled = !busy, onClick = { videoPicker.launch("video/*") }) { Text("＋ Video", color = EzoneBlue, fontSize = 12.sp) }
+            TextButton(enabled = !busy, onClick = { audioPicker.launch("audio/*") }) { Text("♫ Music", color = EzoneBlue, fontSize = 12.sp) }
             Spacer(Modifier.weight(1f))
             Button(
-                enabled = !busy && (draft.trim().isNotEmpty() || attachment != null),
+                enabled = !busy && (draft.trim().isNotEmpty() || attachment != null || musicAttachment != null),
                 onClick = {
                     busy = true
                     message = ""
-                    fun createPost(mediaPath: String?, mediaType: String?) {
-                        val body = JSONObject()
-                            .put("user_id", EzoneSession.userId)
-                            .put("body", draft.trim())
-                            .put("media_path", mediaPath ?: JSONObject.NULL)
-                            .put("media_type", mediaType ?: JSONObject.NULL)
+                    fun createPost(mediaPath: String?, mediaType: String?, audioPath: String?) {
+                        val body = JSONObject().put("user_id", EzoneSession.userId).put("body", draft.trim())
+                            .put("media_path", mediaPath ?: JSONObject.NULL).put("media_type", mediaType ?: JSONObject.NULL)
+                            .put("music_path", audioPath ?: JSONObject.NULL).put("music_title", musicTitle.takeIf { audioPath != null } ?: JSONObject.NULL)
+                            .put("music_artist", JSONObject.NULL)
                         EzoneBackend.request(context, "POST", "/rest/v1/posts", token, body, "return=representation") { result ->
                             busy = false
-                            if (result.ok) {
-                                draft = ""
-                                attachment = null
-                                message = ""
-                                onPosted()
-                            } else {
-                                message = EzoneBackend.errorMessage(result, "Your post could not be published.")
+                            if (result.ok) { draft = ""; attachment = null; musicAttachment = null; musicTitle = ""; message = ""; onPosted() }
+                            else message = EzoneBackend.errorMessage(result, "Your post could not be published.")
+                        }
+                    }
+                    fun uploadAudio(mediaPath: String?, mediaType: String?) {
+                        val selectedAudio = musicAttachment
+                        if (selectedAudio == null) createPost(mediaPath, mediaType, null) else {
+                            val mime = context.contentResolver.getType(selectedAudio).orEmpty()
+                            val ext = when { mime.contains("mpeg") -> "mp3"; mime.contains("wav") -> "wav"; mime.contains("ogg") -> "ogg"; else -> "m4a" }
+                            val audioPath = EzoneSession.userId + "/audio_" + System.currentTimeMillis() + "." + ext
+                            EzoneBackend.upload(context, selectedAudio, audioPath, token) { uploaded ->
+                                if (uploaded.ok) createPost(mediaPath, mediaType, audioPath)
+                                else { busy = false; message = EzoneBackend.errorMessage(uploaded, "Audio upload failed.") }
                             }
                         }
                     }
                     val selected = attachment
                     if (selected == null) {
-                        createPost(null, null)
+                        uploadAudio(null, null)
                     } else {
                         val extension = if (attachmentType == "video") "mp4" else {
                             when (context.contentResolver.getType(selected)?.lowercase()) {
@@ -911,7 +1015,7 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                         }
                         val remotePath = EzoneSession.userId + "/" + System.currentTimeMillis() + "." + extension
                         EzoneBackend.upload(context, selected, remotePath, token) { result ->
-                            if (result.ok) createPost(remotePath, attachmentType)
+                            if (result.ok) uploadAudio(remotePath, attachmentType)
                             else {
                                 busy = false
                                 message = EzoneBackend.errorMessage(result, "Media upload failed.")
@@ -942,7 +1046,7 @@ private fun PostCard(
     val liked = myId in post.likedBy
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 40)
+            Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 40, author?.avatarUrl)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(author?.displayName ?: "Ezone member", color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold,
@@ -982,6 +1086,19 @@ private fun PostCard(
                         Text("Tap to play video", color = EzoneWhite, fontSize = 12.sp)
                     }
                 }
+            }
+        }
+        if (!post.musicPath.isNullOrBlank()) {
+            Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF10232D))
+                .clickable {
+                    val audioUrl = EzoneBackend.mediaUrl(context, post.musicPath)
+                    try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(audioUrl), "audio/*")) }
+                    catch (_: Exception) { Toast.makeText(context, "No audio player found.", Toast.LENGTH_SHORT).show() }
+                }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)).background(Color(0xFF1A4052)), contentAlignment = Alignment.Center) { Text("♫", color = EzoneBlue, fontSize = 20.sp) }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) { Text(post.musicTitle ?: "Audio track", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold); Text(post.musicArtist ?: "Ezone audio", color = EzoneMuted, fontSize = 10.sp) }
+                Text("▶", color = EzoneBlue, fontSize = 17.sp)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -1075,15 +1192,16 @@ private fun ProfileHeader(
     onEdit: () -> Unit,
     onMessage: () -> Unit,
     onFollow: () -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    postCount: Int = 0
 ) {
-    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(profile.displayName.take(1).uppercase(), 62)
+            Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(profile.displayName, color = EzoneWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("@" + profile.username, color = EzoneMuted, fontSize = 12.sp)
+                Text(profile.displayName, color = EzoneWhite, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Text("@" + profile.username, color = EzoneMuted, fontSize = 13.sp)
             }
             if (isOwn) {
                 TextButton(onClick = onEdit) { Text("Edit", color = EzoneBlue) }
@@ -1101,6 +1219,13 @@ private fun ProfileHeader(
                 }
             }
         }
+        Spacer(Modifier.height(22.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            ProfileStat(postCount.toString(), "posts")
+            ProfileStat("—", "followers")
+            ProfileStat("—", "following")
+        }
+        Spacer(Modifier.height(18.dp))
         if (profile.bio.isNotBlank()) {
             Spacer(Modifier.height(14.dp))
             Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp)
@@ -1129,53 +1254,69 @@ private fun ProfileRow(profile: EzoneProfile, following: Boolean, onOpen: () -> 
 }
 
 @Composable
-private fun EditProfileDialog(
-    profile: EzoneProfile,
-    context: Context,
-    onDismiss: () -> Unit,
-    onSaved: () -> Unit
-) {
+private fun ProfileStat(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = EzoneMuted, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss: () -> Unit, onSaved: () -> Unit) {
     var name by remember(profile.id) { mutableStateOf(profile.displayName) }
     var username by remember(profile.id) { mutableStateOf(profile.username) }
     var bio by remember(profile.id) { mutableStateOf(profile.bio) }
+    var avatarUri by remember(profile.id) { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = EzoneSurface,
-        title = { Text("Edit profile", color = EzoneWhite) },
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> avatarUri = uri }
+    AlertDialog(onDismissRequest = onDismiss, containerColor = EzoneSurface,
+        title = { Text("Customize your profile", color = EzoneWhite, fontWeight = FontWeight.Bold) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (avatarUri != null) AsyncImage(model = avatarUri, contentDescription = "New profile photo", modifier = Modifier.size(64.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                    else Avatar(name.take(1).uppercase(), 64, profile.avatarUrl)
+                    Spacer(Modifier.width(12.dp))
+                    Column { Text("Profile photo", color = EzoneWhite, fontWeight = FontWeight.SemiBold); TextButton(onClick = { picker.launch("image/*") }) { Text("Choose photo", color = EzoneBlue) } }
+                }
                 AuthField(name, { name = it }, "Display name")
                 AuthField(username, { username = it }, "Username")
                 AuthField(bio, { bio = it }, "Bio")
+                Text("Your profile photo, name, username and bio are visible on your profile.", color = EzoneMuted, fontSize = 10.sp)
                 if (message.isNotBlank()) Text(message, color = Color(0xFFFF9D9D), fontSize = 11.sp)
             }
         },
         confirmButton = {
             TextButton(enabled = !busy, onClick = {
                 val cleanUsername = username.trim().removePrefix("@").lowercase()
-                if (name.isBlank() || !cleanUsername.matches(Regex("[a-z0-9_]{3,24}"))) {
-                    message = "Enter a name and a valid 3–24 character username."
-                } else {
+                if (name.isBlank() || !cleanUsername.matches(Regex("[a-z0-9_]{3,24}"))) message = "Enter a name and a valid 3–24 character username."
+                else {
                     busy = true
-                    val body = JSONObject().put("display_name", name.trim()).put("username", cleanUsername).put("bio", bio.trim())
-                    EzoneBackend.request(
-                        context, "PATCH",
-                        "/rest/v1/profiles?id=eq." + EzoneSession.userId,
-                        EzoneSession.accessToken, body, "return=minimal"
-                    ) { result ->
-                        busy = false
-                        if (result.ok) onSaved()
-                        else message = EzoneBackend.errorMessage(result, "Could not save your profile. The username may already be taken.")
+                    fun saveProfile(photoUrl: String?) {
+                        val body = JSONObject().put("display_name", name.trim()).put("username", cleanUsername).put("bio", bio.trim())
+                        if (photoUrl != null) body.put("avatar_url", photoUrl)
+                        EzoneBackend.request(context, "PATCH", "/rest/v1/profiles?id=eq." + EzoneSession.userId, EzoneSession.accessToken, body, "return=minimal") { result ->
+                            busy = false
+                            if (result.ok) onSaved() else message = EzoneBackend.errorMessage(result, "Could not save your profile. The username may already be taken.")
+                        }
+                    }
+                    val selected = avatarUri
+                    if (selected == null) saveProfile(null) else {
+                        val mime = context.contentResolver.getType(selected).orEmpty()
+                        val ext = if (mime.contains("png")) "png" else if (mime.contains("webp")) "webp" else "jpg"
+                        val path = EzoneSession.userId + "/avatar_" + System.currentTimeMillis() + "." + ext
+                        EzoneBackend.upload(context, selected, path, EzoneSession.accessToken) { result ->
+                            if (result.ok) saveProfile(EzoneBackend.mediaUrl(context, path))
+                            else { busy = false; message = EzoneBackend.errorMessage(result, "Profile photo upload failed.") }
+                        }
                     }
                 }
-            }) { Text(if (busy) "Saving…" else "Save", color = EzoneBlue) }
+            }) { Text(if (busy) "Saving…" else "Save changes", color = EzoneBlue) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = EzoneMuted) } }
     )
 }
-
 @Composable
 private fun ChangePasswordDialog(context: Context, onDismiss: () -> Unit) {
     var password by remember { mutableStateOf("") }
@@ -1217,14 +1358,10 @@ private fun ChangePasswordDialog(context: Context, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun Avatar(letter: String, size: Int) {
-    Box(
-        Modifier.size(size.dp).clip(CircleShape).background(
-            Brush.linearGradient(listOf(Color(0xFF234B5C), Color(0xFF11232B)))
-        ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(letter.ifBlank { "E" }, color = EzoneBlue, fontSize = (size / 2.2f).sp, fontWeight = FontWeight.Bold)
+private fun Avatar(letter: String, size: Int, imageUrl: String? = null) {
+    Box(Modifier.size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF234B5C), Color(0xFF11232B)))), contentAlignment = Alignment.Center) {
+        if (!imageUrl.isNullOrBlank()) AsyncImage(model = imageUrl, contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Text(letter.ifBlank { "E" }, color = EzoneBlue, fontSize = (size / 2.2f).sp, fontWeight = FontWeight.Bold)
     }
 }
 

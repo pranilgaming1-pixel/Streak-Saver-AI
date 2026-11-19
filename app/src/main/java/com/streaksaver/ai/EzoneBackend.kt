@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 
 data class ApiResponse(val ok: Boolean, val status: Int, val body: String)
 data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null)
-data class EzonePost(val id: String, val userId: String, val body: String, val mediaPath: String?, val mediaType: String?, val createdAt: String, val author: EzoneProfile?, val likedBy: Set<String>)
+data class EzonePost(val id: String, val userId: String, val body: String, val mediaPath: String?, val mediaType: String?, val createdAt: String, val author: EzoneProfile?, val likedBy: Set<String>, val musicPath: String? = null, val musicTitle: String? = null, val musicArtist: String? = null)
 data class EzoneComment(val id: String, val userId: String, val body: String, val createdAt: String)
 data class EzoneNotification(val id: String, val type: String, val message: String, val createdAt: String)
 
@@ -289,7 +289,10 @@ object EzoneBackend {
                 item.optString("media_type").takeIf { it.isNotBlank() && it != "null" },
                 item.optString("created_at"),
                 author,
-                likedBy
+                likedBy,
+                item.optString("music_path").takeIf { it.isNotBlank() && it != "null" },
+                item.optString("music_title").takeIf { it.isNotBlank() && it != "null" },
+                item.optString("music_artist").takeIf { it.isNotBlank() && it != "null" }
             )
         }
     }

@@ -600,3 +600,8 @@ for all to authenticated using (
 ) with check (
     exists (select 1 from public.story_highlights h where h.id = highlight_id and h.user_id = auth.uid())
 );
+
+-- Ezone post music attachments. Users may upload audio they have rights to share.
+alter table public.posts add column if not exists music_path text;
+alter table public.posts add column if not exists music_title text;
+alter table public.posts add column if not exists music_artist text;

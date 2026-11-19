@@ -49,3 +49,8 @@ The expanded Supabase schema also prepares backend tables and access policies fo
 - User blocking and content reports
 
 Run the complete supabase/schema.sql in the Supabase SQL Editor to create the tables and policies. The new tables are backend foundations; their full creation/viewing controls are still being implemented in the Android UI. Authentication is intentionally not being expanded in this feature pass.
+
+
+## UI, profile and post music update
+
+The Home screen includes a Stories rail and the app navigation is simplified to the main social destinations. Profiles support uploading a profile picture and editing display name, username and bio. The post composer accepts an optional user-selected audio file alongside text, photo or video. Audio is stored in the Ezone media bucket and displayed as an audio attachment; it is not a built-in catalogue of commercial songs. Only upload music you own or have permission to share. Run the complete updated `supabase/schema.sql` before using story publishing and music attachments.
