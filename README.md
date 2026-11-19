@@ -35,3 +35,17 @@ Google OAuth will not complete until the Google provider is enabled and configur
 ## Private messaging
 
 The Android app includes an inbox shortcut in the top bar and a **Message** action on other members' profiles. Messages are stored in the Supabase `direct_messages` table. Row Level Security allows only the sender and receiver to read a conversation; authenticated users can send only as themselves. Run the latest `supabase/schema.sql` migration to enable messaging. The app intentionally does not create sample accounts or fake conversations.
+
+## Ezone social features
+
+The app now has dedicated **Explore** and **Reels** destinations. Explore loads photo/video posts from real Ezone members; Reels filters the feed to video posts. The existing Home, Search, Activity, Profile, post composer, comments, likes, and private inbox remain in place.
+
+The expanded Supabase schema also prepares backend tables and access policies for:
+- 24-hour Stories with follower/public/Close Friends audiences, views, and Highlights
+- Saved posts and reposts
+- 24-hour profile Notes
+- Hashtags and post polls
+- Close Friends lists
+- User blocking and content reports
+
+Run the complete supabase/schema.sql in the Supabase SQL Editor to create the tables and policies. The new tables are backend foundations; their full creation/viewing controls are still being implemented in the Android UI. Authentication is intentionally not being expanded in this feature pass.

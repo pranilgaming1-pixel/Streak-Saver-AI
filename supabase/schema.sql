@@ -563,3 +563,40 @@ for select to authenticated using (auth.uid() = reporter_id);
 alter table public.notifications drop constraint if exists notifications_type_check;
 alter table public.notifications add constraint notifications_type_check
 check (type in ('follow','like','comment','message','repost','story_reply','mention'));
+
+
+-- Close Friends controls for private story audiences.
+create table if not exists public.close_friends (
+    owner_id uuid not null references public.profiles(id) on delete cascade,
+    friend_id uuid not null references public.profiles(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key(owner_id, friend_id),
+    check(owner_id <> friend_id)
+);
+alter table public.close_friends enable row level security;
+drop policy if exists "Ezone users manage their close friends" on public.close_friends;
+drop policy if exists "Ezone users are visible in close friends lists" on public.close_friends;
+create policy "Ezone users manage their close friends" on public.close_friends
+for all to authenticated using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create policy "Ezone users are visible in close friends lists" on public.close_friends
+for select to authenticated using (auth.uid() = friend_id);
+drop policy if exists "Ezone members read active stories" on public.stories;
+create policy "Ezone members read active stories" on public.stories
+for select to authenticated using (
+    expires_at > now() and (
+        audience = 'public' or user_id = auth.uid() or
+        (audience = 'followers' and exists (
+            select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = stories.user_id
+        )) or
+        (audience = 'close_friends' and exists (
+            select 1 from public.close_friends cf where cf.owner_id = stories.user_id and cf.friend_id = auth.uid()
+        ))
+    )
+);
+drop policy if exists "Ezone users manage highlight items" on public.story_highlight_items;
+create policy "Ezone users manage highlight items" on public.story_highlight_items
+for all to authenticated using (
+    exists (select 1 from public.story_highlights h where h.id = highlight_id and h.user_id = auth.uid())
+) with check (
+    exists (select 1 from public.story_highlights h where h.id = highlight_id and h.user_id = auth.uid())
+);
