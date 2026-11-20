@@ -33,6 +33,10 @@ alter table public.posts add column if not exists body text not null default '';
 alter table public.posts add column if not exists media_path text;
 alter table public.posts add column if not exists media_type text;
 alter table public.posts add column if not exists created_at timestamptz not null default now();
+-- Upgrade existing installations too: these fields are used by the current Android composer/feed.
+alter table public.posts add column if not exists music_path text;
+alter table public.posts add column if not exists music_title text;
+alter table public.posts add column if not exists music_artist text;
 
 -- New user profiles are created automatically on email signup and Google OAuth.
 create or replace function public.ezone_handle_new_user()
@@ -347,6 +351,9 @@ create table if not exists public.direct_messages (
     seen_at timestamptz,
     constraint direct_messages_no_self check (sender_id <> receiver_id)
 );
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing inbox table.
+alter table public.direct_messages add column if not exists seen_at timestamptz;
+alter table public.direct_messages add column if not exists created_at timestamptz not null default now();
 create index if not exists direct_messages_sender_created_idx on public.direct_messages(sender_id, created_at desc);
 create index if not exists direct_messages_receiver_created_idx on public.direct_messages(receiver_id, created_at desc);
 alter table public.direct_messages enable row level security;
@@ -394,6 +401,11 @@ create table if not exists public.stories (
     created_at timestamptz not null default now(),
     expires_at timestamptz not null default (now() + interval '24 hours')
 );
+-- Upgrade existing Stories tables instead of assuming they were freshly created.
+alter table public.stories add column if not exists caption text not null default '';
+alter table public.stories add column if not exists audience text not null default 'followers';
+alter table public.stories add column if not exists created_at timestamptz not null default now();
+alter table public.stories add column if not exists expires_at timestamptz not null default (now() + interval '24 hours');
 create index if not exists stories_expiry_idx on public.stories(expires_at desc);
 create index if not exists stories_user_created_idx on public.stories(user_id, created_at desc);
 alter table public.stories enable row level security;
