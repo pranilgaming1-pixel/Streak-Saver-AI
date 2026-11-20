@@ -1639,6 +1639,8 @@ private fun PostCard(
     var saved by remember(post.id, myId) { mutableStateOf(false) }
     var reposted by remember(post.id, myId) { mutableStateOf(false) }
     var actionBusy by remember(post.id, myId) { mutableStateOf(false) }
+    var reportOpen by remember(post.id) { mutableStateOf(false) }
+    var reportReason by remember(post.id) { mutableStateOf("spam") }
 
     LaunchedEffect(post.id, myId) {
         EzoneBackend.request(context, "GET",
@@ -1757,7 +1759,37 @@ private fun PostCard(
                 try { context.startActivity(Intent.createChooser(send, "Share post")) }
                 catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable on this device.", Toast.LENGTH_SHORT).show() }
             }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("➤", color = EzoneWhite, fontSize = 17.sp) }
+            TextButton(onClick = { reportOpen = true }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 1.dp)) { Text("⋯", color = EzoneMuted, fontSize = 19.sp) }
         }
+    }
+    if (reportOpen) {
+        AlertDialog(
+            onDismissRequest = { reportOpen = false },
+            containerColor = EzoneSurface,
+            title = { Text("Report this post", color = EzoneWhite) },
+            text = {
+                Column {
+                    listOf("spam", "harassment", "nudity", "violence", "scam", "other").forEach { reason ->
+                        Row(Modifier.fillMaxWidth().clickable { reportReason = reason }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }, colors = RadioButtonDefaults.colors(selectedColor = EzoneRed))
+                            Text(reason.replaceFirstChar { it.uppercase() }, color = EzoneWhite)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val payload = JSONObject().put("reporter_id", myId).put("post_id", post.id).put("reason", reportReason)
+                    EzoneBackend.request(context, "POST", "/rest/v1/content_reports", EzoneSession.accessToken, payload, "return=minimal") { result ->
+                        if (result.ok) {
+                            reportOpen = false
+                            Toast.makeText(context, "Report submitted.", Toast.LENGTH_SHORT).show()
+                        } else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not submit report."), Toast.LENGTH_LONG).show()
+                    }
+                }) { Text("Submit report", color = EzoneRed) }
+            },
+            dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("Cancel", color = EzoneMuted) } }
+        )
     }
 }
 
