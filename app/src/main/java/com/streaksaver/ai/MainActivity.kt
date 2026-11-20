@@ -445,7 +445,7 @@ private fun EzoneMainScreen(
                                 val inFilter = ids.joinToString(",")
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
+                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
                                     token
                                 ) { result ->
                                     loading = false
@@ -458,7 +458,7 @@ private fun EzoneMainScreen(
                 } else {
                     EzoneBackend.request(
                         context, "GET",
-                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&order=created_at.desc&limit=50",
+                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&order=created_at.desc&limit=50",
                         token
                     ) { result ->
                         loading = false
@@ -477,7 +477,7 @@ private fun EzoneMainScreen(
                 loading = true
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
                     token
                 ) { result ->
                     loading = false
@@ -489,7 +489,7 @@ private fun EzoneMainScreen(
                 loading = true
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_type=eq.video&order=created_at.desc&limit=60",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_type=eq.video&order=created_at.desc&limit=60",
                     token
                 ) { result ->
                     loading = false
@@ -527,7 +527,7 @@ private fun EzoneMainScreen(
                     }
                     EzoneBackend.request(
                         context, "GET",
-                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50",
+                        "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50",
                         token
                     ) { postResult ->
                         loading = false
@@ -917,7 +917,7 @@ private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> 
         }
     }
     LaunchedEffect(EzoneSession.userId, refreshKey) {
-        EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,profiles(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
+        EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,profiles:profiles!stories_user_id_fkey(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
             if (result.ok) {
                 val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
                 stories = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
