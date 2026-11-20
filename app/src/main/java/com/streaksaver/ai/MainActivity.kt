@@ -568,6 +568,24 @@ private fun EzoneMainScreen(
                         else pageError = EzoneBackend.errorMessage(postResult, "Could not load this profile's posts.")
                     }
                 }
+                EzoneBackend.request(context, "GET", "/rest/v1/profile_post_pins?select=post_id&user_id=eq." + targetProfileId, token) { pins ->
+                    if (pins.ok) {
+                        val arr = try { JSONArray(pins.body) } catch (_: Exception) { JSONArray() }
+                        pinnedPostIds = (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("post_id") }.toSet()
+                    }
+                }
+                EzoneBackend.request(context, "GET", "/rest/v1/tagged_posts?select=post_id&tagged_user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50", token) { tags ->
+                    if (tags.ok) {
+                        val arr = try { JSONArray(tags.body) } catch (_: Exception) { JSONArray() }
+                        val ids = (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("post_id") }.filter { it.isNotBlank() }
+                        if (ids.isNotEmpty()) {
+                            EzoneBackend.request(context, "GET", "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&id=in.(" + ids.joinToString(",") + ")&order=created_at.desc", token) { tagged ->
+                                if (tagged.ok) taggedPosts = EzoneBackend.parsePosts(tagged.body)
+                                else pageError = EzoneBackend.errorMessage(tagged, "Could not load tagged posts.")
+                            }
+                        } else taggedPosts = emptyList()
+                    } else pageError = EzoneBackend.errorMessage(tags, "Could not load tagged posts.")
+                }
                 if (targetProfileId != myId) {
                     EzoneBackend.request(context, "GET", "/rest/v1/follow_requests?select=id&follower_id=eq." + myId + "&owner_id=eq." + targetProfileId + "&status=eq.pending&limit=1", token) { pending ->
                         isFollowPending = pending.ok && try { JSONArray(pending.body).length() > 0 } catch (_: Exception) { false }
