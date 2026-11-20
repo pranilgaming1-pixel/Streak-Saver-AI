@@ -408,6 +408,9 @@ private fun EzoneMainScreen(
     var followingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var notifications by remember { mutableStateOf<List<EzoneNotification>>(emptyList()) }
     var isFollowingTarget by remember { mutableStateOf(false) }
+    var isFollowPending by remember { mutableStateOf(false) }
+    var isPrivateAccount by remember { mutableStateOf(false) }
+    var followRequestsOpen by remember { mutableStateOf(false) }
     var profileFollowerCount by remember { mutableIntStateOf(0) }
     var profileFollowingCount by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -449,7 +452,7 @@ private fun EzoneMainScreen(
                                 val inFilter = ids.joinToString(",")
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
+                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
                                     token
                                 ) { result ->
                                     loading = false
@@ -507,11 +510,12 @@ private fun EzoneMainScreen(
                 profilePosts = emptyList()
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&id=eq." + targetProfileId + "&limit=1",
+                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private&id=eq." + targetProfileId + "&limit=1",
                     token
                 ) { result ->
                     if (result.ok) {
                         profile = EzoneBackend.parseProfiles(result.body).firstOrNull()
+                        if (targetProfileId == myId) isPrivateAccount = profile?.isPrivate == true
                         if (profile == null && targetProfileId == myId) {
                             val handle = "member_" + myId.replace("-", "").take(12)
                             val display = EzoneSession.email.substringBefore("@").ifBlank { "Ezone member" }
@@ -540,6 +544,9 @@ private fun EzoneMainScreen(
                     }
                 }
                 if (targetProfileId != myId) {
+                    EzoneBackend.request(context, "GET", "/rest/v1/follow_requests?select=id&follower_id=eq." + myId + "&owner_id=eq." + targetProfileId + "&status=eq.pending&limit=1", token) { pending ->
+                        isFollowPending = pending.ok && try { JSONArray(pending.body).length() > 0 } catch (_: Exception) { false }
+                    }
                     EzoneBackend.request(
                         context, "GET",
                         "/rest/v1/follows?select=id&follower_id=eq." + myId + "&following_id=eq." + targetProfileId + "&limit=1",
@@ -774,6 +781,15 @@ private fun EzoneMainScreen(
                     onDataSaver = { dataSaver = it; appPrefs.edit().putBoolean("data_saver", it).apply() },
                     onDefaultFeed = { feedMode = it; appPrefs.edit().putString("default_feed", it).apply() },
                     onEditProfile = { targetProfileId = myId; tab = "Profile"; editProfileOpen = true },
+                    isPrivateAccount = isPrivateAccount,
+                    onPrivateAccountChange = { enabled ->
+                        val body = JSONObject().put("is_private", enabled)
+                        EzoneBackend.request(context, "PATCH", "/rest/v1/profiles?id=eq." + myId, token, body, "return=minimal") { result ->
+                            if (result.ok) isPrivateAccount = enabled
+                            else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not update account privacy."), Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onFollowRequests = { followRequestsOpen = true },
                     onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
                 )
             }
@@ -805,18 +821,29 @@ private fun EzoneMainScreen(
                                 profile = profile!!,
                                 isOwn = targetProfileId == myId,
                                 isFollowing = isFollowingTarget,
+                                isFollowPending = isFollowPending,
                                 onEdit = { editProfileOpen = true },
                                 onMessage = { messagesOpen = true; chatUserId = targetProfileId; chatUserName = profile!!.displayName },
                                 onFollow = {
-                                    val isFollowing = isFollowingTarget
-                                    val method = if (isFollowing) "DELETE" else "POST"
-                                    val path = if (isFollowing) {
-                                        "/rest/v1/follows?follower_id=eq." + myId + "&following_id=eq." + targetProfileId
-                                    } else "/rest/v1/follows"
-                                    val body = if (isFollowing) null else JSONObject().put("follower_id", myId).put("following_id", targetProfileId)
-                                    EzoneBackend.request(context, method, path, token, body, if (body != null) "return=minimal" else null) { result ->
-                                        if (result.ok) isFollowingTarget = !isFollowing
-                                        else pageError = EzoneBackend.errorMessage(result, "Could not update follow.")
+                                    when {
+                                        isFollowingTarget -> EzoneBackend.request(context, "DELETE", "/rest/v1/follows?follower_id=eq." + myId + "&following_id=eq." + targetProfileId, token, prefer = "return=minimal") { result ->
+                                            if (result.ok) isFollowingTarget = false else pageError = EzoneBackend.errorMessage(result, "Could not unfollow.")
+                                        }
+                                        isFollowPending -> EzoneBackend.request(context, "DELETE", "/rest/v1/follow_requests?follower_id=eq." + myId + "&owner_id=eq." + targetProfileId, token, prefer = "return=minimal") { result ->
+                                            if (result.ok) isFollowPending = false else pageError = EzoneBackend.errorMessage(result, "Could not cancel follow request.")
+                                        }
+                                        profile?.isPrivate == true -> {
+                                            val body = JSONObject().put("follower_id", myId).put("owner_id", targetProfileId)
+                                            EzoneBackend.request(context, "POST", "/rest/v1/follow_requests", token, body, "return=minimal") { result ->
+                                                if (result.ok) isFollowPending = true else pageError = EzoneBackend.errorMessage(result, "Could not send follow request.")
+                                            }
+                                        }
+                                        else -> {
+                                            val body = JSONObject().put("follower_id", myId).put("following_id", targetProfileId)
+                                            EzoneBackend.request(context, "POST", "/rest/v1/follows", token, body, "return=minimal") { result ->
+                                                if (result.ok) isFollowingTarget = true else pageError = EzoneBackend.errorMessage(result, "Could not follow.")
+                                            }
+                                        }
                                     }
                                 },
                                 onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) },
@@ -849,7 +876,7 @@ private fun EzoneMainScreen(
                             repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                    if (profilePosts.isEmpty() && !loading) item { EmptyState("No posts yet", "Your photos and videos will appear here.") }
+                    if (profilePosts.isEmpty() && !loading) item { EmptyState(if (profile?.isPrivate == true && !isFollowingTarget && targetProfileId != myId) "This account is private" else "No posts yet", if (profile?.isPrivate == true && !isFollowingTarget && targetProfileId != myId) "Follow this account and wait for approval to see their posts." else "Your photos and videos will appear here.") }
                     if (pageError.isNotBlank()) item { ErrorLine(pageError) }
                 }
             }
@@ -880,6 +907,7 @@ private fun EzoneMainScreen(
     }
 
     if (selectedStory != null) StoryViewer(context, selectedStory!!, onDismiss = { selectedStory = null })
+    if (followRequestsOpen) FollowRequestsDialog(context, onDismiss = { followRequestsOpen = false }, onChanged = { reloadKey++ })
     if (messagesOpen) {
         MessagesScreen(context, onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false })
     }
@@ -925,6 +953,9 @@ private fun EzoneSettingsScreen(
     onDataSaver: (Boolean) -> Unit,
     onDefaultFeed: (String) -> Unit,
     onEditProfile: () -> Unit,
+    isPrivateAccount: Boolean,
+    onPrivateAccountChange: (Boolean) -> Unit,
+    onFollowRequests: () -> Unit,
     onSignOut: () -> Unit
 ) {
     var passwordDialog by remember { mutableStateOf(false) }
@@ -944,8 +975,9 @@ private fun EzoneSettingsScreen(
             SettingsToggle("Autoplay feed videos", "Start videos while scrolling your feed", autoplayFeedVideos, onAutoplayFeedVideos)
             SettingsToggle("Data saver", "Disable automatic video playback to reduce data use", dataSaver, onDataSaver)
             SettingsSection("PRIVACY & SAFETY")
-            SettingsInfo("Account privacy", "Private accounts, follow requests, blocking and restricting require server-side privacy policies. These controls are not enabled until the secure backend rules are installed.")
-            SettingsInfo("Notifications", "In-app activity is available in the Activity tab. Push notifications require notification delivery credentials and device registration.")
+            SettingsToggle("Private account", "Only approved followers can see your posts and Stories.", isPrivateAccount, onPrivateAccountChange)
+            SettingsAction("Follow requests", "Review people asking to follow you", "›", onFollowRequests)
+            SettingsInfo("Notifications", "In-app activity is available in the Activity tab. Push notifications still require notification delivery credentials and device registration.")
             SettingsSection("ABOUT")
             SettingsInfo("Ezone", "A social space for photos, videos, short-form clips and conversations.")
             SettingsInfo("Connection", "Connected to your configured Ezone backend. Never share your account password or private server keys.")
@@ -953,6 +985,68 @@ private fun EzoneSettingsScreen(
         }
     }
     if (passwordDialog) ChangePasswordDialog(context, onDismiss = { passwordDialog = false })
+}
+
+@Composable
+private fun FollowRequestsDialog(context: Context, onDismiss: () -> Unit, onChanged: () -> Unit) {
+    var requests by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var loadingRequests by remember { mutableStateOf(true) }
+    var message by remember { mutableStateOf("") }
+    fun loadRequests() {
+        loadingRequests = true
+        EzoneBackend.request(
+            context, "GET",
+            "/rest/v1/follow_requests?select=id,follower_id,created_at,profiles:profiles!follow_requests_follower_id_fkey(id,username,display_name,avatar_url)&owner_id=eq." + EzoneSession.userId + "&status=eq.pending&order=created_at.desc",
+            EzoneSession.accessToken
+        ) { result ->
+            loadingRequests = false
+            if (result.ok) {
+                val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
+                requests = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+                message = ""
+            } else message = EzoneBackend.errorMessage(result, "Could not load follow requests.")
+        }
+    }
+    LaunchedEffect(Unit) { loadRequests() }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(EzoneSurface).padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Follow requests", color = EzoneWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Close", color = EzoneMuted) }
+            }
+            if (loadingRequests) LoadingLine("Loading requests…")
+            if (!loadingRequests && requests.isEmpty()) EmptyState("No pending requests", "New requests from private-account followers will appear here.")
+            if (message.isNotBlank()) ErrorLine(message)
+            requests.forEach { request ->
+                val person = request.optJSONObject("profiles")
+                val id = request.optString("id")
+                val followerId = request.optString("follower_id")
+                Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(person?.optString("display_name")?.take(1)?.uppercase() ?: "E", 40, person?.optString("avatar_url"))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(person?.optString("display_name") ?: "Ezone member", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("@"+(person?.optString("username") ?: "member"), color = EzoneMuted, fontSize = 10.sp)
+                    }
+                    TextButton(onClick = {
+                        EzoneBackend.request(context, "PATCH", "/rest/v1/follow_requests?id=eq."+id+"&owner_id=eq."+EzoneSession.userId,
+                            EzoneSession.accessToken, JSONObject().put("status","declined"), "return=minimal") { result ->
+                            if (result.ok) { requests = requests.filterNot { it.optString("id") == id }; onChanged() }
+                            else message = EzoneBackend.errorMessage(result, "Could not decline request.")
+                        }
+                    }) { Text("Decline", color = EzoneMuted, fontSize = 10.sp) }
+                    TextButton(onClick = {
+                        EzoneBackend.request(context, "PATCH", "/rest/v1/follow_requests?id=eq."+id+"&owner_id=eq."+EzoneSession.userId,
+                            EzoneSession.accessToken, JSONObject().put("status","accepted"), "return=minimal") { result ->
+                            if (result.ok) { requests = requests.filterNot { it.optString("id") == id }; onChanged() }
+                            else message = EzoneBackend.errorMessage(result, "Could not approve request.")
+                        }
+                    }) { Text("Accept", color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                }
+                HorizontalDivider(color = EzoneLine)
+            }
+        }
+    }
 }
 
 @Composable
@@ -1554,6 +1648,7 @@ private fun ProfileHeader(
     onMessage: () -> Unit,
     onFollow: () -> Unit,
     onSignOut: () -> Unit,
+    isFollowPending: Boolean = false,
     postCount: Int = 0,
     followerCount: Int = 0,
     followingCount: Int = 0
@@ -1586,7 +1681,7 @@ private fun ProfileHeader(
                 Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
                 OutlinedButton(onClick = onSignOut, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Log out", color = EzoneMuted) }
             } else {
-                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) { Text(if (isFollowing) "Following" else "Follow", color = EzoneWhite) }
+                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) { Text(if (isFollowing) "Following" else if (isFollowPending) "Requested" else "Follow", color = EzoneWhite) }
                 OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite) }
             }
         }
