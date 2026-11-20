@@ -387,8 +387,13 @@ private fun EzoneMainScreen(
     sessionNotice: String,
     onDismissNotice: () -> Unit
 ) {
+    val appPrefs = remember { context.getSharedPreferences("ezone_app_settings", Context.MODE_PRIVATE) }
     var tab by remember { mutableStateOf("Home") }
-    var feedMode by remember { mutableStateOf("For you") }
+    var feedMode by remember { mutableStateOf(appPrefs.getString("default_feed", "For you") ?: "For you") }
+    var autoplayReels by remember { mutableStateOf(appPrefs.getBoolean("autoplay_reels", true)) }
+    var autoplayFeedVideos by remember { mutableStateOf(appPrefs.getBoolean("autoplay_feed_videos", false)) }
+    var dataSaver by remember { mutableStateOf(appPrefs.getBoolean("data_saver", false)) }
+    var showSensitiveContent by remember { mutableStateOf(appPrefs.getBoolean("sensitive_content", false)) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var targetProfileId by remember { mutableStateOf(EzoneSession.userId) }
     var messagesOpen by remember { mutableStateOf(false) }
@@ -574,8 +579,13 @@ private fun EzoneMainScreen(
                 Box(contentAlignment = Alignment.Center) { Text("▦", color = EzoneWhite, fontSize = 19.sp) }
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Text(if (tab == "Profile" && targetProfileId == myId) "Profile" else if (tab == "Create") "New post" else "EZONE", color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.2.sp)
+                Text(if (tab == "Profile" && targetProfileId == myId) "Profile" else if (tab == "Create") "New post" else if (tab == "Settings") "Settings" else "EZONE", color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.2.sp)
             }
+            Surface(color = if (tab == "Settings") Color(0xFF42101A) else EzoneSurface2, shape = CircleShape,
+                modifier = Modifier.size(36.dp).clickable { tab = "Settings" }) {
+                Box(contentAlignment = Alignment.Center) { Text("⚙", color = EzoneWhite, fontSize = 20.sp) }
+            }
+            Spacer(Modifier.width(8.dp))
             Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(38.dp).clickable { targetProfileId = myId; tab = "Profile" }) {
                 Box(contentAlignment = Alignment.Center) { Avatar(EzoneSession.email.take(1).uppercase(), 34) }
             }
@@ -591,7 +601,7 @@ private fun EzoneMainScreen(
             "Home" -> {
                 Row(Modifier.fillMaxWidth().background(EzoneSurface).padding(vertical = 2.dp), horizontalArrangement = Arrangement.Center) {
                     listOf("For you", "Following").forEach { item ->
-                        TextButton(onClick = { feedMode = item }) {
+                        TextButton(onClick = { feedMode = item; appPrefs.edit().putString("default_feed", item).apply() }) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(item, color = if (feedMode == item) EzoneWhite else EzoneMuted, fontSize = 12.sp, fontWeight = if (feedMode == item) FontWeight.Bold else FontWeight.Normal)
                                 Spacer(Modifier.height(4.dp))
@@ -683,7 +693,7 @@ private fun EzoneMainScreen(
                     if (reelPosts.isEmpty() && !loading) item { EmptyState("No Reels yet", "Video posts shared by real members will appear here.") }
                     items(reelPosts, key = { it.id }) { post ->
                         val shouldPlay = reelListState.layoutInfo.visibleItemsInfo.any { it.key == post.id }
-                        ReelCard(context, post, myId, shouldPlay,
+                        ReelCard(context, post, myId, shouldPlay && autoplayReels && !dataSaver,
                             onLike = { likePost(context, token, myId, post) { reloadKey++ } },
                             onComments = { activeCommentsPost = post },
                             onProfile = { id -> targetProfileId = id; tab = "Profile" })
@@ -752,6 +762,23 @@ private fun EzoneMainScreen(
                     }
                     if (pageError.isNotBlank()) ErrorLine(pageError)
                 }
+            }
+            "Settings" -> {
+                EzoneSettingsScreen(
+                    context = context,
+                    autoplayReels = autoplayReels,
+                    autoplayFeedVideos = autoplayFeedVideos,
+                    dataSaver = dataSaver,
+                    showSensitiveContent = showSensitiveContent,
+                    defaultFeed = feedMode,
+                    onAutoplayReels = { autoplayReels = it; appPrefs.edit().putBoolean("autoplay_reels", it).apply() },
+                    onAutoplayFeedVideos = { autoplayFeedVideos = it; appPrefs.edit().putBoolean("autoplay_feed_videos", it).apply() },
+                    onDataSaver = { dataSaver = it; appPrefs.edit().putBoolean("data_saver", it).apply() },
+                    onSensitiveContent = { showSensitiveContent = it; appPrefs.edit().putBoolean("sensitive_content", it).apply() },
+                    onDefaultFeed = { feedMode = it; appPrefs.edit().putString("default_feed", it).apply() },
+                    onEditProfile = { targetProfileId = myId; tab = "Profile"; editProfileOpen = true },
+                    onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
+                )
             }
             "Activity" -> {
                 if (loading && notifications.isEmpty()) LoadingLine("Loading activity…")
@@ -886,6 +913,107 @@ private fun EzoneMainScreen(
             context = context,
             onDismiss = { recoveryDialogOpen = false; EzoneSession.setRecoveryMode(context, false) }
         )
+    }
+}
+
+@Composable
+private fun EzoneSettingsScreen(
+    context: Context,
+    autoplayReels: Boolean,
+    autoplayFeedVideos: Boolean,
+    dataSaver: Boolean,
+    showSensitiveContent: Boolean,
+    defaultFeed: String,
+    onAutoplayReels: (Boolean) -> Unit,
+    onAutoplayFeedVideos: (Boolean) -> Unit,
+    onDataSaver: (Boolean) -> Unit,
+    onSensitiveContent: (Boolean) -> Unit,
+    onDefaultFeed: (String) -> Unit,
+    onEditProfile: () -> Unit,
+    onSignOut: () -> Unit
+) {
+    var passwordDialog by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(EzoneBlack)) {
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text("Make Ezone yours", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Text("Control your account and app experience.", color = EzoneMuted, fontSize = 12.sp)
+            Spacer(Modifier.height(18.dp))
+            SettingsSection("ACCOUNT")
+            SettingsAction("Edit profile", "Name, username, bio and profile photo", "›", onEditProfile)
+            SettingsAction("Change password", "Update your account password", "›", { passwordDialog = true })
+            SettingsAction("Sign out", "Log out of this device", "↗", onSignOut, danger = true)
+            SettingsSection("YOUR FEED")
+            SettingsChoice("Default feed", "Choose which posts open first", listOf("For you", "Following"), defaultFeed, onDefaultFeed)
+            SettingsToggle("Show sensitive content", "Allow potentially sensitive posts in discovery", showSensitiveContent, onSensitiveContent)
+            SettingsSection("VIDEO & DATA")
+            SettingsToggle("Autoplay Reels", "Play visible short videos automatically", autoplayReels, onAutoplayReels)
+            SettingsToggle("Autoplay feed videos", "Start videos while scrolling your feed", autoplayFeedVideos, onAutoplayFeedVideos)
+            SettingsToggle("Data saver", "Disable automatic video playback to reduce data use", dataSaver, onDataSaver)
+            SettingsSection("PRIVACY & SAFETY")
+            SettingsInfo("Account privacy", "Private accounts, follow requests, blocking and restricting require server-side privacy policies. These controls are not enabled until the secure backend rules are installed.")
+            SettingsInfo("Notifications", "In-app activity is available in the Activity tab. Push notifications require notification delivery credentials and device registration.")
+            SettingsSection("ABOUT")
+            SettingsInfo("Ezone", "A social space for photos, videos, short-form clips and conversations.")
+            SettingsInfo("Connection", "Connected to your configured Ezone backend. Never share your account password or private server keys.")
+            Spacer(Modifier.height(26.dp))
+        }
+    }
+    if (passwordDialog) ChangePasswordDialog(context, onDismiss = { passwordDialog = false })
+}
+
+@Composable
+private fun SettingsSection(title: String) {
+    Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
+        Spacer(Modifier.width(10.dp))
+        HorizontalDivider(color = EzoneLine)
+    }
+}
+
+@Composable
+private fun SettingsAction(title: String, subtitle: String, trailing: String, onClick: () -> Unit, danger: Boolean = false) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (danger) Color(0xFFFF8997) else EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
+        }
+        Text(trailing, color = if (danger) EzoneRed else EzoneMuted, fontSize = 19.sp)
+    }
+}
+
+@Composable
+private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = EzoneMuted, fontSize = 10.sp, lineHeight = 14.sp)
+        }
+        Switch(checked = checked, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = EzoneRed))
+    }
+}
+
+@Composable
+private fun SettingsChoice(title: String, subtitle: String, options: List<String>, selected: String, onChange: (String) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
+        Spacer(Modifier.height(9.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EzoneSurface2).padding(3.dp)) {
+            options.forEach { option ->
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(9.dp)).background(if (selected == option) Color(0xFF42101A) else Color.Transparent)
+                    .clickable { onChange(option) }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
+                    Text(option, color = if (selected == option) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (selected == option) FontWeight.Bold else FontWeight.Normal)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsInfo(title: String, subtitle: String) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
+        Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, color = EzoneMuted, fontSize = 10.sp, lineHeight = 15.sp)
     }
 }
 
@@ -1277,7 +1405,8 @@ private fun PostCard(
                     url = mediaUrl,
                     modifier = Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp)),
                     loop = false,
-                    showController = true
+                    showController = true,
+                    autoPlay = autoplayFeedVideos && !dataSaver
                 )
             }
         }
