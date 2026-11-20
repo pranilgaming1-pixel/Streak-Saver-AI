@@ -18,7 +18,7 @@ alter table public.profiles add column if not exists is_private boolean not null
 alter table public.profiles add column if not exists website text not null default '';
 alter table public.profiles add column if not exists location text not null default '';
 alter table public.profiles add column if not exists pronouns text not null default '';
-alter table public.profiles add column if not exists accent_color text not null default '#899BEA';
+alter table public.profiles add column if not exists accent_color text not null default '#ED233C';
 
 create table if not exists public.posts (
     id uuid primary key default gen_random_uuid(),
