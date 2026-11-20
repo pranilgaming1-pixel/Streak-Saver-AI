@@ -393,7 +393,6 @@ private fun EzoneMainScreen(
     var autoplayReels by remember { mutableStateOf(appPrefs.getBoolean("autoplay_reels", true)) }
     var autoplayFeedVideos by remember { mutableStateOf(appPrefs.getBoolean("autoplay_feed_videos", false)) }
     var dataSaver by remember { mutableStateOf(appPrefs.getBoolean("data_saver", false)) }
-    var showSensitiveContent by remember { mutableStateOf(appPrefs.getBoolean("sensitive_content", false)) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var targetProfileId by remember { mutableStateOf(EzoneSession.userId) }
     var messagesOpen by remember { mutableStateOf(false) }
@@ -769,12 +768,10 @@ private fun EzoneMainScreen(
                     autoplayReels = autoplayReels,
                     autoplayFeedVideos = autoplayFeedVideos,
                     dataSaver = dataSaver,
-                    showSensitiveContent = showSensitiveContent,
                     defaultFeed = feedMode,
                     onAutoplayReels = { autoplayReels = it; appPrefs.edit().putBoolean("autoplay_reels", it).apply() },
                     onAutoplayFeedVideos = { autoplayFeedVideos = it; appPrefs.edit().putBoolean("autoplay_feed_videos", it).apply() },
                     onDataSaver = { dataSaver = it; appPrefs.edit().putBoolean("data_saver", it).apply() },
-                    onSensitiveContent = { showSensitiveContent = it; appPrefs.edit().putBoolean("sensitive_content", it).apply() },
                     onDefaultFeed = { feedMode = it; appPrefs.edit().putString("default_feed", it).apply() },
                     onEditProfile = { targetProfileId = myId; tab = "Profile"; editProfileOpen = true },
                     onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
@@ -922,12 +919,10 @@ private fun EzoneSettingsScreen(
     autoplayReels: Boolean,
     autoplayFeedVideos: Boolean,
     dataSaver: Boolean,
-    showSensitiveContent: Boolean,
     defaultFeed: String,
     onAutoplayReels: (Boolean) -> Unit,
     onAutoplayFeedVideos: (Boolean) -> Unit,
     onDataSaver: (Boolean) -> Unit,
-    onSensitiveContent: (Boolean) -> Unit,
     onDefaultFeed: (String) -> Unit,
     onEditProfile: () -> Unit,
     onSignOut: () -> Unit
@@ -944,7 +939,6 @@ private fun EzoneSettingsScreen(
             SettingsAction("Sign out", "Log out of this device", "↗", onSignOut, danger = true)
             SettingsSection("YOUR FEED")
             SettingsChoice("Default feed", "Choose which posts open first", listOf("For you", "Following"), defaultFeed, onDefaultFeed)
-            SettingsToggle("Show sensitive content", "Allow potentially sensitive posts in discovery", showSensitiveContent, onSensitiveContent)
             SettingsSection("VIDEO & DATA")
             SettingsToggle("Autoplay Reels", "Play visible short videos automatically", autoplayReels, onAutoplayReels)
             SettingsToggle("Autoplay feed videos", "Start videos while scrolling your feed", autoplayFeedVideos, onAutoplayFeedVideos)
