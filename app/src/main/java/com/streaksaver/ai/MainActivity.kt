@@ -400,6 +400,9 @@ private fun EzoneMainScreen(
     var chatUserName by remember { mutableStateOf("Ezone member") }
     var profile by remember { mutableStateOf<EzoneProfile?>(null) }
     var profilePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var taggedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var pinnedPostIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var profileSection by remember { mutableStateOf("Posts") }
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var savedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var explorePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
@@ -427,6 +430,11 @@ private fun EzoneMainScreen(
     LaunchedEffect(EzoneSession.recoveryMode) { if (EzoneSession.recoveryMode) recoveryDialogOpen = true }
     val token = EzoneSession.accessToken
     val myId = EzoneSession.userId
+    val visibleProfilePosts = when (profileSection) {
+        "Reels" -> profilePosts.filter { it.mediaType == "video" }
+        "Tagged" -> taggedPosts
+        else -> profilePosts.sortedByDescending { it.id in pinnedPostIds }
+    }
 
     LaunchedEffect(token, myId) {
         EzoneBackend.request(context, "GET", "/rest/v1/profiles?select=is_private&id=eq." + myId + "&limit=1", token) { ownProfile ->
@@ -522,6 +530,9 @@ private fun EzoneMainScreen(
                 loading = true
                 profile = null
                 profilePosts = emptyList()
+                taggedPosts = emptyList()
+                pinnedPostIds = emptySet()
+                profileSection = "Posts"
                 EzoneBackend.request(
                     context, "GET",
                     "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private&id=eq." + targetProfileId + "&limit=1",
@@ -930,9 +941,9 @@ private fun EzoneMainScreen(
                         }
                     }
                     item {
-                        ProfileGalleryTabs()
+                        ProfileGalleryTabs(selected = profileSection, onSelect = { profileSection = it })
                     }
-                    items(profilePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "empty" }) { rowPosts ->
+                    items(visibleProfilePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "empty" }) { rowPosts ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             rowPosts.forEach { post ->
                                 ProfilePostTile(context, post, Modifier.weight(1f))
@@ -1788,11 +1799,10 @@ private fun ProfileStat(value: String, label: String) {
 }
 
 @Composable
-private fun ProfileGalleryTabs() {
-    var selected by remember { mutableStateOf("Photos") }
+private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().background(EzoneSurface).padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-        listOf("Photos", "Videos", "About").forEach { label ->
-            TextButton(onClick = { selected = label }) {
+        listOf("Posts", "Reels", "Tagged").forEach { label ->
+            TextButton(onClick = { onSelect(label) }) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(label, color = if (selected == label) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (selected == label) FontWeight.Bold else FontWeight.Normal)
                     Spacer(Modifier.height(3.dp))
