@@ -411,6 +411,10 @@ private fun EzoneMainScreen(
     var isFollowingTarget by remember { mutableStateOf(false) }
     var isFollowPending by remember { mutableStateOf(false) }
     var isPrivateAccount by remember { mutableStateOf(false) }
+    var notifyLikes by remember { mutableStateOf(true) }
+    var notifyComments by remember { mutableStateOf(true) }
+    var notifyFollows by remember { mutableStateOf(true) }
+    var notifyMessages by remember { mutableStateOf(true) }
     var followRequestsOpen by remember { mutableStateOf(false) }
     var profileFollowerCount by remember { mutableIntStateOf(0) }
     var profileFollowingCount by remember { mutableIntStateOf(0) }
@@ -427,6 +431,12 @@ private fun EzoneMainScreen(
     LaunchedEffect(token, myId) {
         EzoneBackend.request(context, "GET", "/rest/v1/profiles?select=is_private&id=eq." + myId + "&limit=1", token) { ownProfile ->
             if (ownProfile.ok) isPrivateAccount = try { JSONArray(ownProfile.body).optJSONObject(0)?.optBoolean("is_private", false) ?: false } catch (_: Exception) { false }
+        }
+        EzoneBackend.request(context, "GET", "/rest/v1/notification_preferences?select=likes,comments,follows,messages&user_id=eq." + myId + "&limit=1", token) { prefs ->
+            if (prefs.ok) try {
+                val item = JSONArray(prefs.body).optJSONObject(0)
+                if (item != null) { notifyLikes = item.optBoolean("likes", true); notifyComments = item.optBoolean("comments", true); notifyFollows = item.optBoolean("follows", true); notifyMessages = item.optBoolean("messages", true) }
+            } catch (_: Exception) { }
         }
         EzoneBackend.request(context, "GET", "/rest/v1/follows?select=following_id&follower_id=eq." + myId, token) { follows ->
             if (follows.ok) {
@@ -818,6 +828,17 @@ private fun EzoneMainScreen(
                     },
                     onFollowRequests = { followRequestsOpen = true },
                     onSavedPosts = { tab = "Saved" },
+                    notifyLikes = notifyLikes,
+                    notifyComments = notifyComments,
+                    notifyFollows = notifyFollows,
+                    notifyMessages = notifyMessages,
+                    onNotificationPreferenceChange = { key, enabled ->
+                        val body = JSONObject().put("user_id", myId).put(key, enabled)
+                        EzoneBackend.request(context, "POST", "/rest/v1/notification_preferences?on_conflict=user_id", token, body, "resolution=merge-duplicates,return=minimal") { result ->
+                            if (result.ok) when (key) { "likes" -> notifyLikes = enabled; "comments" -> notifyComments = enabled; "follows" -> notifyFollows = enabled; "messages" -> notifyMessages = enabled }
+                            else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not save notification preference."), Toast.LENGTH_LONG).show()
+                        }
+                    },
                     onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
                 )
             }
@@ -1000,6 +1021,11 @@ private fun EzoneSettingsScreen(
     onPrivateAccountChange: (Boolean) -> Unit,
     onFollowRequests: () -> Unit,
     onSavedPosts: () -> Unit,
+    notifyLikes: Boolean,
+    notifyComments: Boolean,
+    notifyFollows: Boolean,
+    notifyMessages: Boolean,
+    onNotificationPreferenceChange: (String, Boolean) -> Unit,
     onSignOut: () -> Unit
 ) {
     var passwordDialog by remember { mutableStateOf(false) }
@@ -1022,7 +1048,11 @@ private fun EzoneSettingsScreen(
             SettingsToggle("Private account", "Only approved followers can see your posts and Stories.", isPrivateAccount, onPrivateAccountChange)
             SettingsAction("Follow requests", "Review people asking to follow you", "›", onFollowRequests)
             SettingsAction("Saved posts", "Open the posts you bookmarked", "›", onSavedPosts)
-            SettingsInfo("Notifications", "In-app activity is available in the Activity tab. Push notifications still require notification delivery credentials and device registration.")
+            SettingsToggle("Likes", "Notify me when someone likes my posts", notifyLikes) { onNotificationPreferenceChange("likes", it) }
+            SettingsToggle("Comments", "Notify me when someone comments on my posts", notifyComments) { onNotificationPreferenceChange("comments", it) }
+            SettingsToggle("New followers", "Notify me when someone follows me", notifyFollows) { onNotificationPreferenceChange("follows", it) }
+            SettingsToggle("Messages", "Notify me about new direct messages", notifyMessages) { onNotificationPreferenceChange("messages", it) }
+            SettingsInfo("Push notifications", "These preferences control in-app activity records. Push delivery still needs notification credentials and device registration.")
             SettingsSection("ABOUT")
             SettingsInfo("Ezone", "A social space for photos, videos, short-form clips and conversations.")
             SettingsInfo("Connection", "Connected to your configured Ezone backend. Never share your account password or private server keys.")
