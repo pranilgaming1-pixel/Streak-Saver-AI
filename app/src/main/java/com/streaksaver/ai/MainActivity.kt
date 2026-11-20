@@ -909,7 +909,7 @@ private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> 
         }
     }
     LaunchedEffect(EzoneSession.userId, refreshKey) {
-        EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,created_at,profiles(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
+        EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,profiles(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
             if (result.ok) {
                 val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
                 stories = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
@@ -997,7 +997,7 @@ private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier =
     DisposableEffect(player) { onDispose { player.release() } }
     AndroidView(
         modifier = modifier,
-        factory = { viewContext -> PlayerView(viewContext).apply { player = player; useController = showController } },
+        factory = { viewContext -> PlayerView(viewContext).apply { this.player = player; useController = showController } },
         update = { view -> view.player = player; view.useController = showController }
     )
 }
@@ -1196,22 +1196,13 @@ private fun PostCard(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Box(
-                    Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp))
-                        .background(Color(0xFF1B1B1B)).clickable {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(mediaUrl), "video/*"))
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "No video player found.", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("▶", color = EzoneRed, fontSize = 42.sp)
-                        Text("Tap to play video", color = EzoneWhite, fontSize = 12.sp)
-                    }
-                }
+                EzoneVideoPlayer(
+                    context = context,
+                    url = mediaUrl,
+                    modifier = Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp)),
+                    loop = false,
+                    showController = true
+                )
             }
         }
         if (!post.musicPath.isNullOrBlank()) {
