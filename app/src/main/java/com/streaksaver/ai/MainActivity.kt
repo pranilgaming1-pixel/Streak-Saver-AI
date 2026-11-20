@@ -41,13 +41,13 @@ import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
 
-private val EzoneBlack = Color(0xFF11101D)
-private val EzoneSurface = Color(0xFF1B1A30)
-private val EzoneSurface2 = Color(0xFF24233F)
+private val EzoneBlack = Color(0xFF151426)
+private val EzoneSurface = Color(0xFF201F38)
+private val EzoneSurface2 = Color(0xFF2A2947)
 private val EzoneWhite = Color(0xFFF7F6FF)
-private val EzoneMuted = Color(0xFF9694B2)
+private val EzoneMuted = Color(0xFFAAA8C6)
 private val EzoneBlue = Color(0xFF899BEA)
-private val EzoneLine = Color(0xFF302F4D)
+private val EzoneLine = Color(0xFF3A395B)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -427,7 +427,7 @@ private fun EzoneMainScreen(
                                 val inFilter = ids.joinToString(",")
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
+                                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color),post_likes(user_id)&user_id=in.(" + inFilter + ")&order=created_at.desc&limit=50",
                                     token
                                 ) { result ->
                                     loading = false
@@ -483,7 +483,7 @@ private fun EzoneMainScreen(
                 loading = true
                 EzoneBackend.request(
                     context, "GET",
-                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url&id=eq." + targetProfileId + "&limit=1",
+                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&id=eq." + targetProfileId + "&limit=1",
                     token
                 ) { result ->
                     if (result.ok) profile = EzoneBackend.parseProfiles(result.body).firstOrNull()
@@ -537,8 +537,10 @@ private fun EzoneMainScreen(
                 Text(if (tab == "Profile" && targetProfileId == myId) "My profile" else if (tab == "Create") "Create post" else "ezone", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.2).sp)
                 Text(if (tab == "Home") "YOUR WORLD. YOUR PEOPLE." else "CELESTIAL SOCIAL", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.5.sp)
             }
+            Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(42.dp).clickable { tab = "Search" }) { Box(contentAlignment = Alignment.Center) { Text("⌕", color = EzoneWhite, fontSize = 24.sp) } }
+            Spacer(Modifier.width(8.dp))
             Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(42.dp).clickable { messagesOpen = true }) { Box(contentAlignment = Alignment.Center) { Text("✉", color = EzoneWhite, fontSize = 19.sp) } }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
             Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(42.dp).clickable { targetProfileId = myId; tab = "Profile" }) { Box(contentAlignment = Alignment.Center) { Avatar(EzoneSession.email.take(1).uppercase(), 34) } }
         }
         HorizontalDivider(color = EzoneLine)
@@ -659,7 +661,7 @@ private fun EzoneMainScreen(
                             onValueChange = { searchText = it },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            placeholder = { Text("Search people", color = EzoneMuted) },
+                            placeholder = { Text("Search by username", color = EzoneMuted) },
                             colors = darkFieldColors()
                         )
                         Spacer(Modifier.width(8.dp))
@@ -672,11 +674,11 @@ private fun EzoneMainScreen(
                                 val encoded = Uri.encode(q)
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url&or=(username.ilike.*" + encoded + "*,display_name.ilike.*" + encoded + "*)&limit=40",
+                                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&or=(username.ilike.*" + encoded + "*,display_name.ilike.*" + encoded + "*)&limit=40",
                                     token
                                 ) { result ->
                                     loading = false
-                                    if (result.ok) searchResults = EzoneBackend.parseProfiles(result.body)
+                                    if (result.ok) searchResults = EzoneBackend.parseProfiles(result.body).filter { it.id != myId }
                                     else pageError = EzoneBackend.errorMessage(result, "Search failed.")
                                 }
                             }
@@ -686,7 +688,7 @@ private fun EzoneMainScreen(
                     }
                     if (loading) LoadingLine("Searching…")
                     if (searchResults.isEmpty() && searchText.isNotBlank() && !loading) {
-                        EmptyState("No people found", "Try another username or display name.")
+                        EmptyState("No people found", "Check the spelling or try the exact @username.")
                     } else {
                         LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
                             items(searchResults, key = { it.id }) { item ->
@@ -1215,6 +1217,10 @@ private fun ProfileHeader(
             Spacer(Modifier.height(8.dp))
             Text(profile.bio, color = EzoneWhite, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 17.sp)
         }
+        if (profile.pronouns.isNotBlank() || profile.location.isNotBlank() || profile.website.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(listOf(profile.pronouns, profile.location, profile.website).filter { it.isNotBlank() }.joinToString("  ·  "), color = EzoneMuted, fontSize = 10.sp, textAlign = TextAlign.Center)
+        }
         Spacer(Modifier.height(15.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             ProfileStat(postCount.toString(), "POSTS")
@@ -1300,6 +1306,10 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
     var name by remember(profile.id) { mutableStateOf(profile.displayName) }
     var username by remember(profile.id) { mutableStateOf(profile.username) }
     var bio by remember(profile.id) { mutableStateOf(profile.bio) }
+    var website by remember(profile.id) { mutableStateOf(profile.website) }
+    var location by remember(profile.id) { mutableStateOf(profile.location) }
+    var pronouns by remember(profile.id) { mutableStateOf(profile.pronouns) }
+    var accent by remember(profile.id) { mutableStateOf(profile.accentColor.ifBlank { "#899BEA" }) }
     var avatarUri by remember(profile.id) { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
@@ -1317,7 +1327,18 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
                 AuthField(name, { name = it }, "Display name")
                 AuthField(username, { username = it }, "Username")
                 AuthField(bio, { bio = it }, "Bio")
-                Text("Your profile photo, name, username and bio are visible on your profile.", color = EzoneMuted, fontSize = 10.sp)
+                AuthField(pronouns, { pronouns = it }, "Pronouns")
+                AuthField(location, { location = it }, "Location")
+                AuthField(website, { website = it }, "Website or link")
+                Spacer(Modifier.height(8.dp))
+                Text("Profile accent", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf("#899BEA", "#A889D8", "#5EAFC0", "#D58AA8", "#D6A75E").forEach { colorHex ->
+                        val swatch = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { EzoneBlue }
+                        Box(Modifier.size(32.dp).clip(CircleShape).background(swatch).clickable { accent = colorHex }, contentAlignment = Alignment.Center) { if (accent == colorHex) Text("✓", color = Color.White, fontWeight = FontWeight.Bold) }
+                    }
+                }
+                Text("Your photo, name, username and profile details are visible to other Ezone members.", color = EzoneMuted, fontSize = 10.sp)
                 if (message.isNotBlank()) Text(message, color = Color(0xFFFF9D9D), fontSize = 11.sp)
             }
         },
@@ -1329,6 +1350,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
                     busy = true
                     fun saveProfile(photoUrl: String?) {
                         val body = JSONObject().put("display_name", name.trim()).put("username", cleanUsername).put("bio", bio.trim())
+                            .put("website", website.trim()).put("location", location.trim()).put("pronouns", pronouns.trim()).put("accent_color", accent)
                         if (photoUrl != null) body.put("avatar_url", photoUrl)
                         EzoneBackend.request(context, "PATCH", "/rest/v1/profiles?id=eq." + EzoneSession.userId, EzoneSession.accessToken, body, "return=minimal") { result ->
                             busy = false

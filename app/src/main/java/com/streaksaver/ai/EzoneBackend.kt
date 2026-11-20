@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 data class ApiResponse(val ok: Boolean, val status: Int, val body: String)
-data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null)
+data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null, val website: String = "", val location: String = "", val pronouns: String = "", val accentColor: String = "#899BEA")
 data class EzonePost(val id: String, val userId: String, val body: String, val mediaPath: String?, val mediaType: String?, val createdAt: String, val author: EzoneProfile?, val likedBy: Set<String>, val musicPath: String? = null, val musicTitle: String? = null, val musicArtist: String? = null)
 data class EzoneComment(val id: String, val userId: String, val body: String, val createdAt: String)
 data class EzoneNotification(val id: String, val type: String, val message: String, val createdAt: String)
@@ -260,7 +260,11 @@ object EzoneBackend {
                 item.optString("username"),
                 item.optString("display_name").ifBlank { item.optString("username") },
                 item.optString("bio"),
-                item.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
+                item.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" },
+                item.optString("website").takeIf { it != "null" }.orEmpty(),
+                item.optString("location").takeIf { it != "null" }.orEmpty(),
+                item.optString("pronouns").takeIf { it != "null" }.orEmpty(),
+                item.optString("accent_color").takeIf { it != "null" }.orEmpty().ifBlank { "#899BEA" }
             )
         }
     }
@@ -276,7 +280,11 @@ object EzoneBackend {
                     it.optString("username"),
                     it.optString("display_name").ifBlank { it.optString("username") },
                     it.optString("bio"),
-                    it.optString("avatar_url").takeIf { value -> value.isNotBlank() && value != "null" }
+                    it.optString("avatar_url").takeIf { value -> value.isNotBlank() && value != "null" },
+                    it.optString("website").takeIf { value -> value != "null" }.orEmpty(),
+                    it.optString("location").takeIf { value -> value != "null" }.orEmpty(),
+                    it.optString("pronouns").takeIf { value -> value != "null" }.orEmpty(),
+                    it.optString("accent_color").takeIf { value -> value != "null" }.orEmpty().ifBlank { "#899BEA" }
                 )
             }
             val likes = item.optJSONArray("post_likes") ?: JSONArray()
