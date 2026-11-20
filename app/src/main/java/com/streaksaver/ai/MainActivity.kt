@@ -41,19 +41,19 @@ import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
 
-private val EzoneBlack = Color(0xFF050607)
-private val EzoneSurface = Color(0xFF101316)
-private val EzoneSurface2 = Color(0xFF171C20)
-private val EzoneWhite = Color(0xFFF6F8FA)
-private val EzoneMuted = Color(0xFF9AA5AD)
-private val EzoneBlue = Color(0xFF8EDBFF)
-private val EzoneLine = Color(0xFF29333A)
+private val EzoneBlack = Color(0xFF11101D)
+private val EzoneSurface = Color(0xFF1B1A30)
+private val EzoneSurface2 = Color(0xFF24233F)
+private val EzoneWhite = Color(0xFFF7F6FF)
+private val EzoneMuted = Color(0xFF9694B2)
+private val EzoneBlue = Color(0xFF899BEA)
+private val EzoneLine = Color(0xFF302F4D)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = AndroidColor.rgb(5, 6, 7)
-        window.navigationBarColor = AndroidColor.rgb(5, 6, 7)
+        window.statusBarColor = AndroidColor.rgb(17, 16, 29)
+        window.navigationBarColor = AndroidColor.rgb(17, 16, 29)
         EzoneSession.restore(this)
         handleAuthCallback(intent)
         setContent { EzoneApp(this) }
@@ -534,13 +534,12 @@ private fun EzoneMainScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("ezone", color = EzoneWhite, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.7).sp)
-                Text("YOUR WORLD. YOUR PEOPLE.", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.5.sp)
+                Text(if (tab == "Profile" && targetProfileId == myId) "My profile" else if (tab == "Create") "Create post" else "ezone", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.2).sp)
+                Text(if (tab == "Home") "YOUR WORLD. YOUR PEOPLE." else "CELESTIAL SOCIAL", color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.5.sp)
             }
-            TextButton(onClick = { messagesOpen = true }) { Text("✉", color = EzoneBlue, fontSize = 23.sp) }
-            Box(Modifier.size(7.dp).background(EzoneBlue, CircleShape))
-            Spacer(Modifier.width(6.dp))
-            Text("BETA", color = EzoneMuted, fontSize = 9.sp, letterSpacing = 1.5.sp)
+            Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(42.dp).clickable { messagesOpen = true }) { Box(contentAlignment = Alignment.Center) { Text("✉", color = EzoneWhite, fontSize = 19.sp) } }
+            Spacer(Modifier.width(10.dp))
+            Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(42.dp).clickable { targetProfileId = myId; tab = "Profile" }) { Box(contentAlignment = Alignment.Center) { Avatar(EzoneSession.email.take(1).uppercase(), 34) } }
         }
         HorizontalDivider(color = EzoneLine)
         if (sessionNotice.isNotBlank()) {
@@ -766,22 +765,25 @@ private fun EzoneMainScreen(
                             EmptyState("Profile unavailable", "This account may not have finished setting up its profile.")
                         }
                     }
-                    items(profilePosts, key = { it.id }) { post ->
-                        PostCard(
-                            context, post, myId,
-                            onLike = { likePost(context, token, myId, post) { reloadKey++ } },
-                            onComments = { activeCommentsPost = post },
-                            onProfile = { id -> targetProfileId = id; tab = "Profile" }
-                        )
-                        HorizontalDivider(color = EzoneLine)
+                    item {
+                        ProfileGalleryTabs()
                     }
+                    items(profilePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "empty" }) { rowPosts ->
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            rowPosts.forEach { post ->
+                                ProfilePostTile(context, post, Modifier.weight(1f))
+                            }
+                            repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    if (profilePosts.isEmpty() && !loading) item { EmptyState("No posts yet", "Your photos and videos will appear here.") }
                     if (pageError.isNotBlank()) item { ErrorLine(pageError) }
                 }
             }
         }
         HorizontalDivider(color = EzoneLine)
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().background(EzoneSurface).padding(horizontal = 8.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -792,20 +794,12 @@ private fun EzoneMainScreen(
                     if (item == "Profile") targetProfileId = myId
                 }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            when (item) {
-                                "Home" -> "⌂"
-                                "Search" -> "⌕"
-                                "Explore" -> "⌕"
-                                "Create" -> "+"
-                                "Activity" -> "♡"
-                                else -> "◉"
-                            },
-                            color = if (selected) EzoneBlue else EzoneMuted,
-                            fontSize = if (item == "Create") 25.sp else 21.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(item, color = if (selected) EzoneBlue else EzoneMuted, fontSize = 9.sp)
+                        Surface(color = if (selected || item == "Create") Color(0xFF343454) else Color.Transparent, shape = RoundedCornerShape(13.dp)) {
+                            Box(Modifier.size(width = if (item == "Create") 48.dp else 44.dp, height = 42.dp), contentAlignment = Alignment.Center) {
+                                Text(when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" }, color = if (selected) EzoneWhite else EzoneMuted, fontSize = if (item == "Create") 27.sp else 22.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        
                     }
                 }
             }
@@ -1210,46 +1204,32 @@ private fun ProfileHeader(
     followerCount: Int = 0,
     followingCount: Int = 0
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 22.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(profile.displayName, color = EzoneWhite, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-                Text("@" + profile.username, color = EzoneMuted, fontSize = 13.sp)
-            }
-            if (isOwn) {
-                TextButton(onClick = onEdit) { Text("Edit", color = EzoneBlue) }
-            } else {
-                Column(horizontalAlignment = Alignment.End) {
-                    OutlinedButton(onClick = onMessage, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
-                        Text("Message", color = EzoneBlue, fontSize = 11.sp)
-                    }
-                    Button(onClick = onFollow, colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFollowing) EzoneSurface2 else EzoneBlue,
-                    contentColor = if (isFollowing) EzoneWhite else Color(0xFF061018)
-                )) {
-                    Text(if (isFollowing) "Following" else "Follow", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(104.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(Color(0xFF8299EE), Color(0xFFB58AE9), Color(0xFF8299EE)))).padding(4.dp).clip(CircleShape).background(EzoneSurface2).padding(4.dp)) {
+            Avatar(profile.displayName.take(1).uppercase(), 88, profile.avatarUrl)
         }
-        Spacer(Modifier.height(22.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            ProfileStat(postCount.toString(), "posts")
-            ProfileStat(followerCount.toString(), "followers")
-            ProfileStat(followingCount.toString(), "following")
-        }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(10.dp))
+        Text(profile.displayName, color = EzoneWhite, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        Text("@${profile.username}", color = EzoneMuted, fontSize = 12.sp)
         if (profile.bio.isNotBlank()) {
-            Spacer(Modifier.height(14.dp))
-            Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(profile.bio, color = EzoneWhite, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 17.sp)
         }
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Ezone member", color = EzoneMuted, fontSize = 11.sp)
-            Spacer(Modifier.weight(1f))
-            if (isOwn) TextButton(onClick = onSignOut) { Text("Log out", color = Color(0xFFFF9D9D), fontSize = 12.sp) }
+        Spacer(Modifier.height(15.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            ProfileStat(postCount.toString(), "POSTS")
+            ProfileStat(followerCount.toString(), "FOLLOWERS")
+            ProfileStat(followingCount.toString(), "FOLLOWING")
+        }
+        Spacer(Modifier.height(15.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (isOwn) {
+                Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8799E8), contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
+                OutlinedButton(onClick = onSignOut, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Log out", color = EzoneMuted) }
+            } else {
+                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else Color(0xFF8799E8))) { Text(if (isFollowing) "Following" else "Follow", color = EzoneWhite) }
+                OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite) }
+            }
         }
     }
 }
@@ -1271,8 +1251,47 @@ private fun ProfileRow(profile: EzoneProfile, following: Boolean, onOpen: () -> 
 @Composable
 private fun ProfileStat(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = EzoneMuted, fontSize = 11.sp)
+        Text(value, color = EzoneWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = EzoneMuted, fontSize = 9.sp, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+private fun ProfileGalleryTabs() {
+    var selected by remember { mutableStateOf("Photos") }
+    Row(Modifier.fillMaxWidth().background(EzoneSurface).padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+        listOf("Photos", "Videos", "About").forEach { label ->
+            TextButton(onClick = { selected = label }) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(label, color = if (selected == label) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (selected == label) FontWeight.Bold else FontWeight.Normal)
+                    Spacer(Modifier.height(3.dp))
+                    if (selected == label) Box(Modifier.width(30.dp).height(2.dp).background(EzoneBlue, CircleShape))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfilePostTile(context: Context, post: EzonePost, modifier: Modifier = Modifier) {
+    val media = post.mediaPath
+    Box(modifier.aspectRatio(0.82f).clip(RoundedCornerShape(10.dp)).background(EzoneSurface2).clickable {
+        if (!media.isNullOrBlank()) {
+            val url = EzoneBackend.mediaUrl(context, media)
+            val mime = if (post.mediaType == "video") "video/*" else "image/*"
+            try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), mime)) }
+            catch (_: Exception) { Toast.makeText(context, "No compatible viewer found.", Toast.LENGTH_SHORT).show() }
+        }
+    }) {
+        if (!media.isNullOrBlank() && post.mediaType == "image") {
+            AsyncImage(model = EzoneBackend.mediaUrl(context, media), contentDescription = "Profile post", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (post.mediaType == "video") "▶" else "✦", color = EzoneBlue, fontSize = 26.sp)
+                Text(if (post.mediaType == "video") "VIDEO" else post.body.take(28).ifBlank { "POST" }, color = EzoneWhite, fontSize = 9.sp, maxLines = 2, textAlign = TextAlign.Center)
+            }
+        }
+        if (post.mediaType == "video") Text("▶", Modifier.align(Alignment.TopEnd).padding(6.dp), color = Color.White, fontSize = 12.sp)
     }
 }
 
