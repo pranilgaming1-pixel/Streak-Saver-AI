@@ -37,6 +37,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
@@ -401,6 +408,7 @@ private fun EzoneMainScreen(
     var loading by remember { mutableStateOf(false) }
     var pageError by remember { mutableStateOf("") }
     var activeCommentsPost by remember { mutableStateOf<EzonePost?>(null) }
+    var selectedStory by remember { mutableStateOf<JSONObject?>(null) }
     var editProfileOpen by remember { mutableStateOf(false) }
     var recoveryDialogOpen by remember { mutableStateOf(EzoneSession.recoveryMode) }
     LaunchedEffect(EzoneSession.recoveryMode) { if (EzoneSession.recoveryMode) recoveryDialogOpen = true }
@@ -495,8 +503,25 @@ private fun EzoneMainScreen(
                     "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&id=eq." + targetProfileId + "&limit=1",
                     token
                 ) { result ->
-                    if (result.ok) profile = EzoneBackend.parseProfiles(result.body).firstOrNull()
-                    else pageError = EzoneBackend.errorMessage(result, "Could not load this profile.")
+                    if (result.ok) {
+                        profile = EzoneBackend.parseProfiles(result.body).firstOrNull()
+                        if (profile == null && targetProfileId == myId) {
+                            val handle = "member_" + myId.replace("-", "").take(12)
+                            val display = EzoneSession.email.substringBefore("@").ifBlank { "Ezone member" }
+                            val bootstrap = JSONObject().put("id", myId).put("username", handle).put("display_name", display)
+                            EzoneBackend.request(context, "POST", "/rest/v1/profiles", token, bootstrap, "return=representation") { created ->
+                                if (created.ok) {
+                                    profile = EzoneBackend.parseProfiles(created.body).firstOrNull()
+                                    if (profile == null) reloadKey++
+                                } else {
+                                    pageError = "Your profile could not be created: " + EzoneBackend.errorMessage(created, "Check that the Ezone Supabase schema is installed.")
+                                }
+                            }
+                        }
+                    } else {
+                        profile = null
+                        pageError = EzoneBackend.errorMessage(result, "Could not load this profile. Check your Supabase setup.")
+                    }
                     EzoneBackend.request(
                         context, "GET",
                         "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles(id,username,display_name,bio,avatar_url),post_likes(user_id)&user_id=eq." + targetProfileId + "&order=created_at.desc&limit=50",
@@ -575,7 +600,7 @@ private fun EzoneMainScreen(
                 HorizontalDivider(color = EzoneLine)
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     item {
-                        StoriesRail(context = context, onStoryPosted = { reloadKey++ }, onOpenProfile = { id -> targetProfileId = id; tab = "Profile" })
+                        StoriesRail(context = context, refreshKey = reloadKey, onStoryPosted = { reloadKey++ }, onOpenStory = { selectedStory = it }, onOpenProfile = { id -> targetProfileId = id; tab = "Profile" })
                         HorizontalDivider(color = EzoneLine)
                     }
                     if (loading && feedPosts.isEmpty()) {
@@ -653,11 +678,10 @@ private fun EzoneMainScreen(
                     if (loading && reelPosts.isEmpty()) item { LoadingLine("Loading Reels…") }
                     if (reelPosts.isEmpty() && !loading) item { EmptyState("No Reels yet", "Video posts shared by real members will appear here.") }
                     items(reelPosts, key = { it.id }) { post ->
-                        PostCard(context, post, myId,
+                        ReelCard(context, post, myId,
                             onLike = { likePost(context, token, myId, post) { reloadKey++ } },
                             onComments = { activeCommentsPost = post },
                             onProfile = { id -> targetProfileId = id; tab = "Profile" })
-                        HorizontalDivider(color = EzoneLine)
                     }
                     if (pageError.isNotBlank()) item { ErrorLine(pageError) }
                 }
@@ -773,7 +797,13 @@ private fun EzoneMainScreen(
                             )
                             HorizontalDivider(color = EzoneLine)
                         } else {
-                            EmptyState("Profile unavailable", "This account may not have finished setting up its profile.")
+                            if (targetProfileId == myId) {
+                                Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Set up your Ezone profile", color = EzoneWhite, fontWeight = FontWeight.Bold)
+                                    Text("Your profile is being created. If this message stays here, check the Supabase schema and try again.", color = EzoneMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+                                    if (pageError.isNotBlank()) ErrorLine(pageError)
+                                }
+                            } else EmptyState("Profile unavailable", "This account may not have finished setting up its profile.")
                         }
                     }
                     item {
@@ -817,6 +847,7 @@ private fun EzoneMainScreen(
         }
     }
 
+    if (selectedStory != null) StoryViewer(context, selectedStory!!, onDismiss = { selectedStory = null })
     if (messagesOpen) {
         MessagesScreen(context, onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false })
     }
@@ -851,7 +882,7 @@ private fun EzoneMainScreen(
 }
 
 @Composable
-private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfile: (String) -> Unit) {
+private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> Unit, onOpenStory: (JSONObject) -> Unit, onOpenProfile: (String) -> Unit) {
     var stories by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
@@ -867,7 +898,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
             EzoneBackend.upload(context, uri, path, token) { uploaded ->
                 if (!uploaded.ok) { busy = false; note = EzoneBackend.errorMessage(uploaded, "Story upload failed.") }
                 else {
-                    val body = JSONObject().put("user_id", EzoneSession.userId).put("media_path", path).put("media_type", type).put("audience", "followers")
+                    val body = JSONObject().put("user_id", EzoneSession.userId).put("media_path", path).put("media_type", type).put("audience", "public")
                     EzoneBackend.request(context, "POST", "/rest/v1/stories", token, body, "return=minimal") { created ->
                         busy = false
                         if (created.ok) { note = "Story shared for 24 hours."; onStoryPosted() }
@@ -877,7 +908,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
             }
         }
     }
-    LaunchedEffect(EzoneSession.userId) {
+    LaunchedEffect(EzoneSession.userId, refreshKey) {
         EzoneBackend.request(context, "GET", "/rest/v1/stories?select=id,user_id,media_path,media_type,created_at,profiles(id,username,display_name,avatar_url)&expires_at=gt." + Uri.encode(java.time.Instant.now().toString()) + "&order=created_at.desc&limit=40", token) { result ->
             if (result.ok) {
                 val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
@@ -907,9 +938,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
                 val owner = story.optJSONObject("profiles")
                 val username = owner?.optString("username").orEmpty().ifBlank { "Member" }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable {
-                    val media = EzoneBackend.mediaUrl(context, story.optString("media_path"))
-                    try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(media), if (story.optString("media_type") == "video") "video/*" else "image/*")) }
-                    catch (_: Exception) { note = "No app available to open this Story." }
+                    onOpenStory(story)
                 }) {
                     Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneRed, Color(0xFF8C1828)))).padding(3.dp)) {
                         Box(Modifier.fillMaxSize().clip(CircleShape).background(EzoneBlack), contentAlignment = Alignment.Center) { Avatar(username.take(1).uppercase(), 48, owner?.optString("avatar_url")) }
@@ -920,6 +949,83 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
             }
         }
         if (note.isNotBlank()) Text(note, color = EzoneRed, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+    }
+}
+
+
+@Composable
+private fun StoryViewer(context: Context, story: JSONObject, onDismiss: () -> Unit) {
+    val mediaUrl = EzoneBackend.mediaUrl(context, story.optString("media_path"))
+    val owner = story.optJSONObject("profiles")
+    LaunchedEffect(story.optString("id")) {
+        val ownerId = story.optString("user_id")
+        if (ownerId.isNotBlank() && ownerId != EzoneSession.userId) {
+            val view = JSONObject().put("story_id", story.optString("id")).put("viewer_id", EzoneSession.userId)
+            EzoneBackend.request(context, "POST", "/rest/v1/story_views", EzoneSession.accessToken, view, "resolution=merge-duplicates,return=minimal") { }
+        }
+    }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            if (story.optString("media_type") == "video") {
+                EzoneVideoPlayer(context, mediaUrl, Modifier.fillMaxSize(), loop = false, showController = true)
+            } else {
+                AsyncImage(model = mediaUrl, contentDescription = "Story", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            }
+            Row(Modifier.align(Alignment.TopStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent))).statusBarsPadding().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Avatar(owner?.optString("username")?.take(1)?.uppercase() ?: "E", 38, owner?.optString("avatar_url"))
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(owner?.optString("display_name").orEmpty().ifBlank { owner?.optString("username").orEmpty().ifBlank { "Ezone member" } }, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(story.optString("created_at").substringBefore("T"), color = Color.LightGray, fontSize = 10.sp)
+                }
+                TextButton(onClick = onDismiss) { Text("✕", color = Color.White, fontSize = 22.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier = Modifier, loop: Boolean = false, showController: Boolean = true) {
+    val player = remember(url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(url))
+            repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+            playWhenReady = true
+            prepare()
+        }
+    }
+    DisposableEffect(player) { onDispose { player.release() } }
+    AndroidView(
+        modifier = modifier,
+        factory = { viewContext -> PlayerView(viewContext).apply { player = player; useController = showController } },
+        update = { view -> view.player = player; view.useController = showController }
+    )
+}
+
+@Composable
+private fun ReelCard(context: Context, post: EzonePost, myId: String, onLike: () -> Unit, onComments: () -> Unit, onProfile: (String) -> Unit) {
+    val author = post.author
+    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(bottom = 14.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 40, author?.avatarUrl)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(author?.displayName ?: "Ezone member", color = EzoneWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.clickable { author?.id?.let(onProfile) })
+                Text("@${author?.username ?: "member"}", color = EzoneMuted, fontSize = 10.sp)
+            }
+            Text("REEL", color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+        }
+        if (!post.mediaPath.isNullOrBlank()) {
+            EzoneVideoPlayer(context, EzoneBackend.mediaUrl(context, post.mediaPath), Modifier.fillMaxWidth().height(570.dp), loop = true, showController = true)
+        } else {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("This Reel has no video attached.", color = EzoneMuted) }
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onLike) { Text((if (myId in post.likedBy) "♥" else "♡") + " " + post.likedBy.size, color = if (myId in post.likedBy) EzoneRed else EzoneWhite, fontSize = 18.sp) }
+            TextButton(onClick = onComments) { Text("Comment", color = EzoneWhite, fontSize = 12.sp) }
+        }
+        if (post.body.isNotBlank()) Text(post.body, Modifier.padding(horizontal = 18.dp), color = EzoneWhite, fontSize = 13.sp)
+        HorizontalDivider(color = EzoneLine, modifier = Modifier.padding(top = 12.dp))
     }
 }
 
@@ -1323,7 +1429,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
     var website by remember(profile.id) { mutableStateOf(profile.website) }
     var location by remember(profile.id) { mutableStateOf(profile.location) }
     var pronouns by remember(profile.id) { mutableStateOf(profile.pronouns) }
-    var accent by remember(profile.id) { mutableStateOf(profile.accentColor.ifBlank { "#899BEA" }) }
+    var accent by remember(profile.id) { mutableStateOf(profile.accentColor.ifBlank { "#ED233C" }) }
     var avatarUri by remember(profile.id) { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
@@ -1347,7 +1453,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
                 Spacer(Modifier.height(8.dp))
                 Text("Profile accent", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    listOf("#899BEA", "#A889D8", "#5EAFC0", "#D58AA8", "#D6A75E").forEach { colorHex ->
+                    listOf("#ED233C", "#B51F32", "#7A1725", "#FFFFFF", "#777777").forEach { colorHex ->
                         val swatch = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { EzoneRed }
                         Box(Modifier.size(32.dp).clip(CircleShape).background(swatch).clickable { accent = colorHex }, contentAlignment = Alignment.Center) { if (accent == colorHex) Text("✓", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
