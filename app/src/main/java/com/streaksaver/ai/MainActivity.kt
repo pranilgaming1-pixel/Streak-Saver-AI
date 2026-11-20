@@ -349,7 +349,7 @@ private fun AuthField(
         visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = EzoneWhite, unfocusedTextColor = EzoneWhite,
-            focusedBorderColor = EzoneRed, unfocusedBorderColor = Color(0xFF38434A),
+            focusedBorderColor = EzoneRed, unfocusedBorderColor = Color(0xFF553039),
             focusedContainerColor = EzoneSurface, unfocusedContainerColor = EzoneSurface,
             cursorColor = EzoneRed
         )
@@ -366,7 +366,7 @@ private fun PrimaryAction(label: String, disabled: Boolean, onClick: () -> Unit)
         colors = ButtonDefaults.buttonColors(
             containerColor = EzoneRed,
             contentColor = Color(0xFF061018),
-            disabledContainerColor = Color(0xFF35596A)
+            disabledContainerColor = Color(0xFF6B252E)
         )
     ) {
         Text(label, fontWeight = FontWeight.Bold)
@@ -623,7 +623,7 @@ private fun EzoneMainScreen(
                             Spacer(Modifier.height(12.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("For you", "Reels").forEach { filter ->
-                                    Surface(color = if (filter == "For you") Color(0xFF183542) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
+                                    Surface(color = if (filter == "For you") Color(0xFF211014) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
                                         Text(filter, color = if (filter == "For you") EzoneRed else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
                                     }
                                 }
@@ -730,7 +730,7 @@ private fun EzoneMainScreen(
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     items(notifications, key = { it.id }) { notification ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(38.dp).background(Color(0xFF1A3542), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(38.dp).background(Color(0xFF211014), CircleShape), contentAlignment = Alignment.Center) {
                                 Text(notification.type.take(1).uppercase(), color = EzoneRed, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.width(12.dp))
@@ -794,7 +794,7 @@ private fun EzoneMainScreen(
         }
         HorizontalDivider(color = EzoneLine)
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFF1C1B32)).padding(horizontal = 8.dp, vertical = 5.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFF111111)).padding(horizontal = 8.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -805,7 +805,7 @@ private fun EzoneMainScreen(
                     if (item == "Profile") targetProfileId = myId
                 }) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(color = if (selected || item == "Create") Color(0xFF343454) else Color.Transparent, shape = RoundedCornerShape(13.dp)) {
+                        Surface(color = if (selected || item == "Create") Color(0xFF42101A) else Color.Transparent, shape = RoundedCornerShape(13.dp)) {
                             Box(Modifier.size(width = if (item == "Create") 43.dp else 40.dp, height = 38.dp), contentAlignment = Alignment.Center) {
                                 Text(when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" }, color = if (selected) EzoneWhite else EzoneMuted, fontSize = if (item == "Create") 26.sp else 21.sp, fontWeight = FontWeight.SemiBold)
                             }
@@ -897,7 +897,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable(enabled = !busy) { picker.launch("*/*") }) {
                     Box(Modifier.size(58.dp).clip(CircleShape).background(EzoneSurface2), contentAlignment = Alignment.Center) {
                         Avatar(EzoneSession.email.take(1).uppercase(), 54)
-                        Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(EzoneRed), contentAlignment = Alignment.Center) { Text("+", color = Color(0xFF071017), fontWeight = FontWeight.Black) }
+                        Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(EzoneRed), contentAlignment = Alignment.Center) { Text("+", color = Color(0xFF090909), fontWeight = FontWeight.Black) }
                     }
                     Spacer(Modifier.height(5.dp))
                     Text("Your story", color = EzoneMuted, fontSize = 10.sp, maxLines = 1)
@@ -911,7 +911,7 @@ private fun StoriesRail(context: Context, onStoryPosted: () -> Unit, onOpenProfi
                     try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(media), if (story.optString("media_type") == "video") "video/*" else "image/*")) }
                     catch (_: Exception) { note = "No app available to open this Story." }
                 }) {
-                    Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneRed, Color(0xFF365E7B)))).padding(3.dp)) {
+                    Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneRed, Color(0xFF8C1828)))).padding(3.dp)) {
                         Box(Modifier.fillMaxSize().clip(CircleShape).background(EzoneBlack), contentAlignment = Alignment.Center) { Avatar(username.take(1).uppercase(), 48, owner?.optString("avatar_url")) }
                     }
                     Spacer(Modifier.height(5.dp))
@@ -1041,7 +1041,7 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EzoneRed, contentColor = Color(0xFF061018), disabledContainerColor = Color(0xFF293941)),
+                colors = ButtonDefaults.buttonColors(containerColor = EzoneRed, contentColor = Color(0xFF061018), disabledContainerColor = Color(0xFF292020)),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 7.dp)
             ) {
                 Text(if (busy) "Posting…" else "Post", fontWeight = FontWeight.Bold)
@@ -1064,7 +1064,7 @@ private fun PostCard(
     val liked = myId in post.likedBy
     Column(Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 7.dp).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFB58AE9), EzoneRed))).padding(2.dp)) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFF5268), EzoneRed))).padding(2.dp)) {
                 Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 38, author?.avatarUrl)
             }
             Spacer(Modifier.width(10.dp))
@@ -1092,7 +1092,7 @@ private fun PostCard(
             } else {
                 Box(
                     Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp))
-                        .background(Color(0xFF201F38)).clickable {
+                        .background(Color(0xFF1B1B1B)).clickable {
                             try {
                                 context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(mediaUrl), "video/*"))
                             } catch (_: Exception) {
@@ -1109,7 +1109,7 @@ private fun PostCard(
             }
         }
         if (!post.musicPath.isNullOrBlank()) {
-            Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF10232D))
+            Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1B0B0E))
                 .clickable {
                     val audioUrl = EzoneBackend.mediaUrl(context, post.musicPath)
                     try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(audioUrl), "audio/*")) }
@@ -1221,7 +1221,7 @@ private fun ProfileHeader(
 ) {
     val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneRed }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)).background(EzoneSurface).padding(horizontal = 20.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(88.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(accentColor, Color(0xFFB58AE9), accentColor))).padding(3.dp).clip(CircleShape).background(EzoneSurface2).padding(3.dp)) {
+        Box(Modifier.size(88.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(accentColor, Color(0xFFFF5268), accentColor))).padding(3.dp).clip(CircleShape).background(EzoneSurface2).padding(3.dp)) {
             Avatar(profile.displayName.take(1).uppercase(), 76, profile.avatarUrl)
         }
         Spacer(Modifier.height(9.dp))
@@ -1429,7 +1429,7 @@ private fun ChangePasswordDialog(context: Context, onDismiss: () -> Unit) {
 
 @Composable
 private fun Avatar(letter: String, size: Int, imageUrl: String? = null) {
-    Box(Modifier.size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF234B5C), Color(0xFF11232B)))), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF42101A), Color(0xFF1B0B0E)))), contentAlignment = Alignment.Center) {
         if (!imageUrl.isNullOrBlank()) AsyncImage(model = imageUrl, contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text(letter.ifBlank { "E" }, color = EzoneRed, fontSize = (size / 2.2f).sp, fontWeight = FontWeight.Bold)
     }
@@ -1466,7 +1466,7 @@ private fun darkFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = EzoneWhite,
     unfocusedTextColor = EzoneWhite,
     focusedBorderColor = EzoneRed,
-    unfocusedBorderColor = Color(0xFF38434A),
+    unfocusedBorderColor = Color(0xFF553039),
     focusedContainerColor = EzoneSurface,
     unfocusedContainerColor = EzoneSurface,
     cursorColor = EzoneRed
