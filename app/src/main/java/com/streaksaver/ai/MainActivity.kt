@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -498,6 +499,8 @@ private fun EzoneMainScreen(
             }
             "Profile" -> {
                 loading = true
+                profile = null
+                profilePosts = emptyList()
                 EzoneBackend.request(
                     context, "GET",
                     "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&id=eq." + targetProfileId + "&limit=1",
@@ -668,7 +671,8 @@ private fun EzoneMainScreen(
                 }
             }
             "Reels" -> {
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                val reelListState = rememberLazyListState()
+                LazyColumn(Modifier.weight(1f), state = reelListState, contentPadding = PaddingValues(bottom = 12.dp)) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(18.dp)) {
                             Text("Reels", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
@@ -678,7 +682,8 @@ private fun EzoneMainScreen(
                     if (loading && reelPosts.isEmpty()) item { LoadingLine("Loading Reels…") }
                     if (reelPosts.isEmpty() && !loading) item { EmptyState("No Reels yet", "Video posts shared by real members will appear here.") }
                     items(reelPosts, key = { it.id }) { post ->
-                        ReelCard(context, post, myId,
+                        val shouldPlay = reelListState.layoutInfo.visibleItemsInfo.any { it.key == post.id }
+                        ReelCard(context, post, myId, shouldPlay,
                             onLike = { likePost(context, token, myId, post) { reloadKey++ } },
                             onComments = { activeCommentsPost = post },
                             onProfile = { id -> targetProfileId = id; tab = "Profile" })
@@ -967,7 +972,7 @@ private fun StoryViewer(context: Context, story: JSONObject, onDismiss: () -> Un
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             if (story.optString("media_type") == "video") {
-                EzoneVideoPlayer(context, mediaUrl, Modifier.fillMaxSize(), loop = false, showController = true)
+                EzoneVideoPlayer(context, mediaUrl, Modifier.fillMaxSize(), loop = false, showController = true, autoPlay = true)
             } else {
                 AsyncImage(model = mediaUrl, contentDescription = "Story", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             }
@@ -985,15 +990,16 @@ private fun StoryViewer(context: Context, story: JSONObject, onDismiss: () -> Un
 }
 
 @Composable
-private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier = Modifier, loop: Boolean = false, showController: Boolean = true) {
+private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier = Modifier, loop: Boolean = false, showController: Boolean = true, autoPlay: Boolean = false) {
     val player = remember(url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
             repeatMode = if (loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-            playWhenReady = true
+            playWhenReady = autoPlay
             prepare()
         }
     }
+    LaunchedEffect(player, autoPlay) { player.playWhenReady = autoPlay }
     DisposableEffect(player) { onDispose { player.release() } }
     AndroidView(
         modifier = modifier,
@@ -1003,7 +1009,7 @@ private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier =
 }
 
 @Composable
-private fun ReelCard(context: Context, post: EzonePost, myId: String, onLike: () -> Unit, onComments: () -> Unit, onProfile: (String) -> Unit) {
+private fun ReelCard(context: Context, post: EzonePost, myId: String, autoPlay: Boolean, onLike: () -> Unit, onComments: () -> Unit, onProfile: (String) -> Unit) {
     val author = post.author
     Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(bottom = 14.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1016,7 +1022,7 @@ private fun ReelCard(context: Context, post: EzonePost, myId: String, onLike: ()
             Text("REEL", color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
         }
         if (!post.mediaPath.isNullOrBlank()) {
-            EzoneVideoPlayer(context, EzoneBackend.mediaUrl(context, post.mediaPath), Modifier.fillMaxWidth().height(570.dp), loop = true, showController = true)
+            EzoneVideoPlayer(context, EzoneBackend.mediaUrl(context, post.mediaPath), Modifier.fillMaxWidth().height(570.dp), loop = true, showController = true, autoPlay = autoPlay)
         } else {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("This Reel has no video attached.", color = EzoneMuted) }
         }
