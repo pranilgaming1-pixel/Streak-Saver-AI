@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +49,9 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
     var error by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     val me = EzoneSession.userId
+    LaunchedEffect(Unit) {
+        while (true) { delay(10000); refresh++ }
+    }
     LaunchedEffect(refresh) {
         loading = true
         EzoneBackend.request(context, "GET",
@@ -136,8 +140,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
     var error by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     val me = EzoneSession.userId
-    LaunchedEffect(otherUserId, refresh) {
-        loading = true
+    LaunchedEffect(otherUserId) {
         EzoneBackend.request(
             context, "PATCH",
             "/rest/v1/direct_messages?sender_id=eq." + otherUserId + "&receiver_id=eq." + me + "&seen_at=is.null",
@@ -145,6 +148,12 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
             JSONObject().put("seen_at", Instant.now().toString()),
             "return=minimal"
         ) { }
+    }
+    LaunchedEffect(otherUserId) {
+        while (true) { delay(3500); refresh++ }
+    }
+    LaunchedEffect(otherUserId, refresh) {
+        loading = true
         val filter = "or=(and(sender_id.eq." + me + ",receiver_id.eq." + otherUserId + "),and(sender_id.eq." + otherUserId + ",receiver_id.eq." + me + "))"
         EzoneBackend.request(context, "GET",
             "/rest/v1/direct_messages?select=id,sender_id,receiver_id,body,created_at,seen_at&" + filter + "&order=created_at.asc&limit=300",
@@ -172,7 +181,9 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
         text = {
             Column(Modifier.fillMaxWidth()) {
                 if (loading && messages.isEmpty()) Text("Loading messages…", color = MsgMuted)
-                Column(Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 330.dp).verticalScroll(rememberScrollState())) {
+                val chatScroll = rememberScrollState()
+                LaunchedEffect(messages.size) { chatScroll.animateScrollTo(chatScroll.maxValue) }
+                Column(Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 330.dp).verticalScroll(chatScroll)) {
                     messages.forEach { msg ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = if (msg.sender == me) Arrangement.End else Arrangement.Start) {
                             Box(Modifier.padding(vertical = 4.dp).widthIn(max = 240.dp)
