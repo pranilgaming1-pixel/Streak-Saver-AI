@@ -1881,6 +1881,7 @@ private fun ProfileHeader(
     followerCount: Int = 0,
     followingCount: Int = 0
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneRed }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)).background(EzoneSurface).padding(horizontal = 20.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(88.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(accentColor, Color(0xFFFF5268), accentColor))).padding(3.dp).clip(CircleShape).background(EzoneSurface2).padding(3.dp)) {
@@ -1888,7 +1889,13 @@ private fun ProfileHeader(
         }
         Spacer(Modifier.height(9.dp))
         Text(profile.displayName, color = EzoneWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text(if (profile.website.isNotBlank()) profile.website else "@${profile.username}", color = EzoneMuted, fontSize = 11.sp)
+        if (profile.website.isNotBlank()) {
+            Text(profile.website, color = accentColor, fontSize = 11.sp, modifier = Modifier.clickable {
+                val link = if (profile.website.startsWith("http://") || profile.website.startsWith("https://")) profile.website else "https://" + profile.website
+                try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
+                catch (_: Exception) { Toast.makeText(context, "No app can open this link.", Toast.LENGTH_SHORT).show() }
+            })
+        } else Text("@${profile.username}", color = EzoneMuted, fontSize = 11.sp)
         if (profile.bio.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(profile.bio, color = EzoneWhite, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 17.sp)
