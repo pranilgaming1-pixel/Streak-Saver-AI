@@ -1177,6 +1177,23 @@ private fun PostCard(
 ) {
     val author = post.author
     val liked = myId in post.likedBy
+    var saved by remember(post.id, myId) { mutableStateOf(false) }
+    var reposted by remember(post.id, myId) { mutableStateOf(false) }
+    var actionBusy by remember(post.id, myId) { mutableStateOf(false) }
+
+    LaunchedEffect(post.id, myId) {
+        EzoneBackend.request(context, "GET",
+            "/rest/v1/saved_posts?select=post_id&user_id=eq." + myId + "&post_id=eq." + post.id + "&limit=1",
+            EzoneSession.accessToken) { result ->
+            if (result.ok) saved = try { JSONArray(result.body).length() > 0 } catch (_: Exception) { false }
+        }
+        EzoneBackend.request(context, "GET",
+            "/rest/v1/post_reposts?select=id&user_id=eq." + myId + "&post_id=eq." + post.id + "&limit=1",
+            EzoneSession.accessToken) { result ->
+            if (result.ok) reposted = try { JSONArray(result.body).length() > 0 } catch (_: Exception) { false }
+        }
+    }
+
     Column(Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 7.dp).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFF5268), EzoneRed))).padding(2.dp)) {
@@ -1233,9 +1250,53 @@ private fun PostCard(
                 Text((if (liked) "♥" else "♡") + "  " + post.likedBy.size, color = if (liked) Color(0xFFFF8DAA) else EzoneWhite, fontSize = 16.sp)
             }
             TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("▢", color = EzoneWhite, fontSize = 17.sp) }
-            TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("♧", color = EzoneWhite, fontSize = 16.sp) }
+            TextButton(enabled = !actionBusy, onClick = {
+                actionBusy = true
+                val method = if (saved) "DELETE" else "POST"
+                val path = "/rest/v1/saved_posts?user_id=eq." + myId + "&post_id=eq." + post.id
+                val payload = if (saved) null else JSONObject().put("user_id", myId).put("post_id", post.id)
+                EzoneBackend.request(context, method, path, EzoneSession.accessToken, payload, "return=minimal") { result ->
+                    actionBusy = false
+                    if (result.ok) {
+                        saved = !saved
+                        Toast.makeText(context, if (saved) "Post saved" else "Removed from saved posts", Toast.LENGTH_SHORT).show()
+                    } else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not update saved posts."), Toast.LENGTH_LONG).show()
+                }
+            }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
+                Text(if (saved) "▣" else "▢", color = if (saved) EzoneRed else EzoneWhite, fontSize = 16.sp)
+            }
+            TextButton(enabled = !actionBusy, onClick = {
+                actionBusy = true
+                if (reposted) {
+                    EzoneBackend.request(context, "DELETE",
+                        "/rest/v1/post_reposts?user_id=eq." + myId + "&post_id=eq." + post.id,
+                        EzoneSession.accessToken, prefer = "return=minimal") { result ->
+                        actionBusy = false
+                        if (result.ok) reposted = false else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not undo repost."), Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    val payload = JSONObject().put("user_id", myId).put("post_id", post.id)
+                    EzoneBackend.request(context, "POST", "/rest/v1/post_reposts", EzoneSession.accessToken, payload, "return=minimal") { result ->
+                        actionBusy = false
+                        if (result.ok) reposted = true else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not repost."), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
+                Text(if (reposted) "↻✓" else "↻", color = if (reposted) EzoneRed else EzoneWhite, fontSize = 16.sp)
+            }
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("➤", color = EzoneWhite, fontSize = 17.sp) }
+            TextButton(onClick = {
+                val shareText = buildString {
+                    append(post.body)
+                    if (!post.mediaPath.isNullOrBlank()) {
+                        if (isNotBlank()) append("\\n")
+                        append(EzoneBackend.mediaUrl(context, post.mediaPath))
+                    }
+                }.ifBlank { "Check out this post on Ezone" }
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareText)
+                try { context.startActivity(Intent.createChooser(send, "Share post")) }
+                catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable on this device.", Toast.LENGTH_SHORT).show() }
+            }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("➤", color = EzoneWhite, fontSize = 17.sp) }
         }
         if (post.body.isNotBlank()) Text(post.body, color = EzoneWhite, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(start = 8.dp, bottom = 5.dp))
     }
