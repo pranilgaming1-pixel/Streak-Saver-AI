@@ -407,6 +407,15 @@ private fun EzoneMainScreen(
     val token = EzoneSession.accessToken
     val myId = EzoneSession.userId
 
+    LaunchedEffect(token, myId) {
+        EzoneBackend.request(context, "GET", "/rest/v1/follows?select=following_id&follower_id=eq." + myId, token) { follows ->
+            if (follows.ok) {
+                val arr = try { JSONArray(follows.body) } catch (_: Exception) { JSONArray() }
+                followingIds = (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("following_id") }.toSet()
+            }
+        }
+    }
+
     LaunchedEffect(tab, feedMode, reloadKey, targetProfileId, token) {
         pageError = ""
         when (tab) {
@@ -1206,8 +1215,9 @@ private fun ProfileHeader(
     followerCount: Int = 0,
     followingCount: Int = 0
 ) {
+    val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneBlue }
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(104.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(Color(0xFF8299EE), Color(0xFFB58AE9), Color(0xFF8299EE)))).padding(4.dp).clip(CircleShape).background(EzoneSurface2).padding(4.dp)) {
+        Box(Modifier.size(104.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(accentColor, Color(0xFFB58AE9), accentColor))).padding(4.dp).clip(CircleShape).background(EzoneSurface2).padding(4.dp)) {
             Avatar(profile.displayName.take(1).uppercase(), 88, profile.avatarUrl)
         }
         Spacer(Modifier.height(10.dp))
@@ -1230,10 +1240,10 @@ private fun ProfileHeader(
         Spacer(Modifier.height(15.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isOwn) {
-                Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8799E8), contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
+                Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
                 OutlinedButton(onClick = onSignOut, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Log out", color = EzoneMuted) }
             } else {
-                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else Color(0xFF8799E8))) { Text(if (isFollowing) "Following" else "Follow", color = EzoneWhite) }
+                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) { Text(if (isFollowing) "Following" else "Follow", color = EzoneWhite) }
                 OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite) }
             }
         }
