@@ -654,6 +654,8 @@ create table if not exists public.follow_requests (
   check (follower_id <> owner_id)
 );
 create index if not exists follow_requests_owner_pending_idx on public.follow_requests(owner_id, created_at desc) where status = 'pending';
+alter table public.follow_requests drop constraint if exists follow_requests_follower_id_owner_id_key;
+create unique index if not exists follow_requests_pending_unique_idx on public.follow_requests(follower_id, owner_id) where status = 'pending';
 alter table public.follow_requests enable row level security;
 drop policy if exists "Ezone participants read follow requests" on public.follow_requests;
 drop policy if exists "Ezone users create follow requests" on public.follow_requests;
