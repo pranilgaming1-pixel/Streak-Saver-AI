@@ -778,3 +778,64 @@ using (
   )
 );
 notify pgrst, 'reload schema';
+
+
+-- Profile grids: owner-controlled pinned posts, tagged-post gallery and collaborator invites.
+create table if not exists public.profile_post_pins (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  post_id uuid not null references public.posts(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key(user_id, post_id)
+);
+create index if not exists profile_post_pins_user_created_idx on public.profile_post_pins(user_id, created_at desc);
+alter table public.profile_post_pins enable row level security;
+drop policy if exists "Ezone pins readable by members" on public.profile_post_pins;
+drop policy if exists "Ezone users pin own posts" on public.profile_post_pins;
+drop policy if exists "Ezone users unpin own posts" on public.profile_post_pins;
+create policy "Ezone pins readable by members" on public.profile_post_pins for select to authenticated using (true);
+create policy "Ezone users pin own posts" on public.profile_post_pins for insert to authenticated with check (
+  auth.uid() = user_id and exists (select 1 from public.posts p where p.id = post_id and p.user_id = auth.uid())
+);
+create policy "Ezone users unpin own posts" on public.profile_post_pins for delete to authenticated using (auth.uid() = user_id);
+
+create table if not exists public.tagged_posts (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.posts(id) on delete cascade,
+  tagged_user_id uuid not null references public.profiles(id) on delete cascade,
+  tagged_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(post_id, tagged_user_id)
+);
+create index if not exists tagged_posts_user_created_idx on public.tagged_posts(tagged_user_id, created_at desc);
+alter table public.tagged_posts enable row level security;
+drop policy if exists "Ezone tagged posts readable by members" on public.tagged_posts;
+drop policy if exists "Ezone users tag people in own posts" on public.tagged_posts;
+drop policy if exists "Ezone taggers remove tags" on public.tagged_posts;
+create policy "Ezone tagged posts readable by members" on public.tagged_posts for select to authenticated using (true);
+create policy "Ezone users tag people in own posts" on public.tagged_posts for insert to authenticated with check (
+  auth.uid() = tagged_by and exists (select 1 from public.posts p where p.id = post_id and p.user_id = auth.uid())
+);
+create policy "Ezone taggers remove tags" on public.tagged_posts for delete to authenticated using (auth.uid() = tagged_by or auth.uid() = tagged_user_id);
+
+create table if not exists public.post_collaborators (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  collaborator_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check(status in ('pending','accepted','declined')),
+  created_at timestamptz not null default now(),
+  primary key(post_id, collaborator_id),
+  check(owner_id <> collaborator_id)
+);
+alter table public.post_collaborators enable row level security;
+drop policy if exists "Ezone collaborators read own invitations" on public.post_collaborators;
+drop policy if exists "Ezone post owners invite collaborators" on public.post_collaborators;
+drop policy if exists "Ezone collaborators respond" on public.post_collaborators;
+create policy "Ezone collaborators read own invitations" on public.post_collaborators for select to authenticated using (auth.uid() = owner_id or auth.uid() = collaborator_id);
+create policy "Ezone post owners invite collaborators" on public.post_collaborators for insert to authenticated with check (
+  auth.uid() = owner_id and exists (select 1 from public.posts p where p.id = post_id and p.user_id = auth.uid())
+);
+create policy "Ezone collaborators respond" on public.post_collaborators for update to authenticated using (auth.uid() = collaborator_id and status = 'pending')
+with check (auth.uid() = collaborator_id and status in ('accepted','declined'));
+grant select, insert, delete on public.profile_post_pins, public.tagged_posts to authenticated;
+grant select, insert, update on public.post_collaborators to authenticated;
+notify pgrst, 'reload schema';
