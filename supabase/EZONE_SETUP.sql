@@ -640,3 +640,44 @@ alter default privileges in schema public
 
 -- Refresh PostgREST's schema cache so the Android app can see newly-created tables.
 notify pgrst, 'reload schema';
+
+
+-- Ezone private-account follow requests and notification preferences.
+create table if not exists public.follow_requests (
+  id uuid primary key default gen_random_uuid(),
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','accepted','declined')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (follower_id, owner_id),
+  check (follower_id <> owner_id)
+);
+create index if not exists follow_requests_owner_pending_idx on public.follow_requests(owner_id, created_at desc) where status = 'pending';
+alter table public.follow_requests enable row level security;
+drop policy if exists "Ezone participants read follow requests" on public.follow_requests;
+drop policy if exists "Ezone users create follow requests" on public.follow_requests;
+drop policy if exists "Ezone owners respond to follow requests" on public.follow_requests;
+drop policy if exists "Ezone participants cancel follow requests" on public.follow_requests;
+create policy "Ezone participants read follow requests" on public.follow_requests for select to authenticated using (auth.uid() = follower_id or auth.uid() = owner_id);
+create policy "Ezone users create follow requests" on public.follow_requests for insert to authenticated with check (auth.uid() = follower_id and exists (select 1 from public.profiles p where p.id = owner_id and p.is_private = true));
+create policy "Ezone owners respond to follow requests" on public.follow_requests for update to authenticated using (auth.uid() = owner_id and status = 'pending') with check (auth.uid() = owner_id and status in ('accepted','declined'));
+create policy "Ezone participants cancel follow requests" on public.follow_requests for delete to authenticated using (auth.uid() = follower_id or auth.uid() = owner_id);
+create or replace function public.ezone_accept_follow_request() returns trigger language plpgsql security definer set search_path = public as $$ begin if old.status = 'pending' and new.status = 'accepted' then insert into public.follows(follower_id, following_id) values (new.follower_id, new.owner_id) on conflict (follower_id, following_id) do nothing; end if; new.updated_at = now(); return new; end; $$;
+revoke all on function public.ezone_accept_follow_request() from public, anon, authenticated;
+drop trigger if exists ezone_accept_follow_request_trigger on public.follow_requests;
+create trigger ezone_accept_follow_request_trigger before update of status on public.follow_requests for each row execute function public.ezone_accept_follow_request();
+drop policy if exists "Ezone users follow" on public.follows;
+create policy "Ezone users follow public profiles" on public.follows for insert to authenticated with check (auth.uid() = follower_id and follower_id <> following_id and exists (select 1 from public.profiles p where p.id = following_id and p.is_private = false));
+create table if not exists public.notification_preferences (user_id uuid primary key references public.profiles(id) on delete cascade, likes boolean not null default true, comments boolean not null default true, follows boolean not null default true, messages boolean not null default true, product_updates boolean not null default false, updated_at timestamptz not null default now());
+alter table public.notification_preferences enable row level security;
+drop policy if exists "Ezone users manage notification preferences" on public.notification_preferences;
+create policy "Ezone users manage notification preferences" on public.notification_preferences for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+revoke all on function public.ezone_handle_new_user() from public, anon, authenticated;
+revoke all on function public.ezone_notify_comment() from public, anon, authenticated;
+revoke all on function public.ezone_notify_follow() from public, anon, authenticated;
+revoke all on function public.ezone_notify_like() from public, anon, authenticated;
+revoke all on function public.ezone_notify_message() from public, anon, authenticated;
+revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+grant select, insert, update, delete on public.follow_requests, public.notification_preferences to authenticated;
+notify pgrst, 'reload schema';
