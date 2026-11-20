@@ -1038,6 +1038,70 @@ private fun EzoneMainScreen(
             onChanged = { reloadKey++ }
         )
     }
+    if (showProfileInsights && profile != null && targetProfileId == myId) {
+        AlertDialog(
+            onDismissRequest = { showProfileInsights = false },
+            containerColor = EzoneSurface,
+            title = { Text("Account insights", color = EzoneWhite, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("Posts published: ${profilePosts.size}", color = EzoneWhite)
+                    Text("Likes received: ${profilePosts.sumOf { it.likedBy.size }}", color = EzoneWhite)
+                    Text("Followers: $profileFollowerCount", color = EzoneWhite)
+                    Text("Following: $profileFollowingCount", color = EzoneWhite)
+                    Text("These are profile totals currently available. Reach, impressions and watch-time analytics are not collected yet.", color = EzoneMuted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = { TextButton(onClick = { showProfileInsights = false }) { Text("Close", color = EzoneRed) } }
+        )
+    }
+    if (profileActionDialog == "block") {
+        AlertDialog(
+            onDismissRequest = { profileActionDialog = "" },
+            containerColor = EzoneSurface,
+            title = { Text("Block @${profile?.username.orEmpty()}?", color = EzoneWhite) },
+            text = { Text("This account will be added to your blocked list.", color = EzoneMuted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val payload = JSONObject().put("blocker_id", myId).put("blocked_id", targetProfileId)
+                    EzoneBackend.request(context, "POST", "/rest/v1/blocked_users", token, payload, "resolution=ignore-duplicates,return=minimal") { result ->
+                        if (result.ok) { profileActionDialog = ""; tab = "Home" }
+                        else pageError = EzoneBackend.errorMessage(result, "Could not block this account.")
+                    }
+                }) { Text("Block", color = EzoneRed) }
+            },
+            dismissButton = { TextButton(onClick = { profileActionDialog = "" }) { Text("Cancel", color = EzoneMuted) } }
+        )
+    }
+    if (profileActionDialog == "report") {
+        AlertDialog(
+            onDismissRequest = { profileActionDialog = "" },
+            containerColor = EzoneSurface,
+            title = { Text("Report this account", color = EzoneWhite) },
+            text = {
+                Column {
+                    listOf("spam", "harassment", "nudity", "violence", "scam", "other").forEach { reason ->
+                        Row(Modifier.fillMaxWidth().clickable { reportReason = reason }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }, colors = RadioButtonDefaults.colors(selectedColor = EzoneRed))
+                            Text(reason.replaceFirstChar { it.uppercase() }, color = EzoneWhite)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val payload = JSONObject().put("reporter_id", myId).put("reported_user_id", targetProfileId).put("reason", reportReason)
+                    EzoneBackend.request(context, "POST", "/rest/v1/content_reports", token, payload, "return=minimal") { result ->
+                        if (result.ok) {
+                            profileActionDialog = ""
+                            Toast.makeText(context, "Report submitted.", Toast.LENGTH_SHORT).show()
+                        } else pageError = EzoneBackend.errorMessage(result, "Could not submit report.")
+                    }
+                }) { Text("Submit report", color = EzoneRed) }
+            },
+            dismissButton = { TextButton(onClick = { profileActionDialog = "" }) { Text("Cancel", color = EzoneMuted) } }
+        )
+    }
     if (editProfileOpen && profile != null && targetProfileId == myId) {
         EditProfileDialog(
             profile = profile!!,
