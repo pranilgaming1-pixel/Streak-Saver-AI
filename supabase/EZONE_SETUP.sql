@@ -683,3 +683,61 @@ revoke all on function public.ezone_notify_message() from public, anon, authenti
 revoke all on function public.rls_auto_enable() from public, anon, authenticated;
 grant select, insert, update, delete on public.follow_requests, public.notification_preferences to authenticated;
 notify pgrst, 'reload schema';
+
+
+-- Respect per-account in-app notification preferences.
+create or replace function public.ezone_notify_comment()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+declare owner_id uuid;
+begin
+  select p.user_id into owner_id from public.posts p where p.id = new.post_id;
+  if owner_id is not null and owner_id <> new.user_id
+     and coalesce((select np.comments from public.notification_preferences np where np.user_id = owner_id), true) then
+    insert into public.notifications(user_id, actor_id, post_id, type, message)
+    values (owner_id, new.user_id, new.post_id, 'comment', 'Someone commented on your post');
+  end if;
+  return new;
+end;
+$$;
+create or replace function public.ezone_notify_like()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+declare owner_id uuid;
+begin
+  select p.user_id into owner_id from public.posts p where p.id = new.post_id;
+  if owner_id is not null and owner_id <> new.user_id
+     and coalesce((select np.likes from public.notification_preferences np where np.user_id = owner_id), true) then
+    insert into public.notifications(user_id, actor_id, post_id, type, message)
+    values (owner_id, new.user_id, new.post_id, 'like', 'Someone liked your post');
+  end if;
+  return new;
+end;
+$$;
+create or replace function public.ezone_notify_follow()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if coalesce((select np.follows from public.notification_preferences np where np.user_id = new.following_id), true) then
+    insert into public.notifications(user_id, actor_id, type, message)
+    values (new.following_id, new.follower_id, 'follow', 'Someone started following you');
+  end if;
+  return new;
+end;
+$$;
+create or replace function public.ezone_notify_message()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if coalesce((select np.messages from public.notification_preferences np where np.user_id = new.receiver_id), true) then
+    insert into public.notifications(user_id, actor_id, type, message)
+    values (new.receiver_id, new.sender_id, 'message', 'You received a new message');
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.ezone_notify_comment() from public, anon, authenticated;
+revoke all on function public.ezone_notify_like() from public, anon, authenticated;
+revoke all on function public.ezone_notify_follow() from public, anon, authenticated;
+revoke all on function public.ezone_notify_message() from public, anon, authenticated;
+
