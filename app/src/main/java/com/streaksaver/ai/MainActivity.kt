@@ -422,6 +422,7 @@ private fun EzoneMainScreen(
     var notifyFollows by remember { mutableStateOf(true) }
     var notifyMessages by remember { mutableStateOf(true) }
     var followRequestsOpen by remember { mutableStateOf(false) }
+    var blockedUsersOpen by remember { mutableStateOf(false) }
     var profileFollowerCount by remember { mutableIntStateOf(0) }
     var profileFollowingCount by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -859,6 +860,7 @@ private fun EzoneMainScreen(
                         }
                     },
                     onFollowRequests = { followRequestsOpen = true },
+                    onBlockedUsers = { blockedUsersOpen = true },
                     onSavedPosts = { tab = "Saved" },
                     notifyLikes = notifyLikes,
                     notifyComments = notifyComments,
@@ -1024,6 +1026,7 @@ private fun EzoneMainScreen(
 
     if (selectedStory != null) StoryViewer(context, selectedStory!!, onDismiss = { selectedStory = null })
     if (followRequestsOpen) FollowRequestsDialog(context, onDismiss = { followRequestsOpen = false }, onChanged = { reloadKey++ })
+    if (blockedUsersOpen) BlockedUsersDialog(context, onDismiss = { blockedUsersOpen = false })
     if (messagesOpen) {
         MessagesScreen(context, onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false })
     }
@@ -1136,6 +1139,7 @@ private fun EzoneSettingsScreen(
     isPrivateAccount: Boolean,
     onPrivateAccountChange: (Boolean) -> Unit,
     onFollowRequests: () -> Unit,
+    onBlockedUsers: () -> Unit,
     onSavedPosts: () -> Unit,
     notifyLikes: Boolean,
     notifyComments: Boolean,
@@ -1163,6 +1167,7 @@ private fun EzoneSettingsScreen(
             SettingsSection("PRIVACY & SAFETY")
             SettingsToggle("Private account", "Only approved followers can see your posts and Stories.", isPrivateAccount, onPrivateAccountChange)
             SettingsAction("Follow requests", "Review people asking to follow you", "›", onFollowRequests)
+            SettingsAction("Blocked accounts", "Review or unblock accounts", "›", onBlockedUsers)
             SettingsAction("Saved posts", "Open the posts you bookmarked", "›", onSavedPosts)
             SettingsToggle("Likes", "Notify me when someone likes my posts", notifyLikes) { onNotificationPreferenceChange("likes", it) }
             SettingsToggle("Comments", "Notify me when someone comments on my posts", notifyComments) { onNotificationPreferenceChange("comments", it) }
@@ -1176,6 +1181,59 @@ private fun EzoneSettingsScreen(
         }
     }
     if (passwordDialog) ChangePasswordDialog(context, onDismiss = { passwordDialog = false })
+}
+
+@Composable
+private fun BlockedUsersDialog(context: Context, onDismiss: () -> Unit) {
+    var blockedIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    var blockedProfiles by remember { mutableStateOf<List<EzoneProfile>>(emptyList()) }
+    var message by remember { mutableStateOf("") }
+    var busyId by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        EzoneBackend.request(context, "GET", "/rest/v1/blocked_users?select=blocked_id&blocker_id=eq." + EzoneSession.userId, EzoneSession.accessToken) { result ->
+            if (!result.ok) message = EzoneBackend.errorMessage(result, "Could not load blocked accounts.")
+            else {
+                val arr = try { JSONArray(result.body) } catch (_: Exception) { JSONArray() }
+                blockedIds = (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("blocked_id") }.filter { it.isNotBlank() }
+                if (blockedIds.isEmpty()) blockedProfiles = emptyList()
+                else EzoneBackend.request(context, "GET", "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private&id=in.(" + blockedIds.joinToString(",") + ")", EzoneSession.accessToken) { profiles ->
+                    if (profiles.ok) blockedProfiles = EzoneBackend.parseProfiles(profiles.body)
+                    else message = EzoneBackend.errorMessage(profiles, "Could not load blocked profiles.")
+                }
+            }
+        }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(EzoneSurface).padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Blocked accounts", color = EzoneWhite, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Close", color = EzoneMuted) }
+            }
+            if (message.isNotBlank()) ErrorLine(message)
+            if (blockedProfiles.isEmpty() && message.isBlank()) EmptyState("No blocked accounts", "Accounts you block will appear here.")
+            blockedProfiles.forEach { person ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(person.displayName.take(1).uppercase(), 38, person.avatarUrl)
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(person.displayName, color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("@${person.username}", color = EzoneMuted, fontSize = 10.sp)
+                    }
+                    TextButton(enabled = busyId.isBlank(), onClick = {
+                        busyId = person.id
+                        EzoneBackend.request(context, "DELETE", "/rest/v1/blocked_users?blocker_id=eq." + EzoneSession.userId + "&blocked_id=eq." + person.id, EzoneSession.accessToken, prefer = "return=minimal") { result ->
+                            busyId = ""
+                            if (result.ok) {
+                                blockedProfiles = blockedProfiles.filterNot { it.id == person.id }
+                                blockedIds = blockedIds.filterNot { it == person.id }
+                            } else message = EzoneBackend.errorMessage(result, "Could not unblock this account.")
+                        }
+                    }) { Text("Unblock", color = EzoneRed, fontSize = 11.sp) }
+                }
+                HorizontalDivider(color = EzoneLine)
+            }
+        }
+    }
 }
 
 @Composable
