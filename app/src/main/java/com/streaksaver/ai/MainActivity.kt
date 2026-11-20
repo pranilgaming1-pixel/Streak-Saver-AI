@@ -807,6 +807,9 @@ private fun EzoneMainScreen(
                                     Text("Set up your Ezone profile", color = EzoneWhite, fontWeight = FontWeight.Bold)
                                     Text("Your profile is being created. If this message stays here, check the Supabase schema and try again.", color = EzoneMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
                                     if (pageError.isNotBlank()) ErrorLine(pageError)
+                                    Button(onClick = { reloadKey++ }, colors = ButtonDefaults.buttonColors(containerColor = EzoneRed)) {
+                                        Text("Retry profile setup", color = EzoneBlack, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             } else EmptyState("Profile unavailable", "This account may not have finished setting up its profile.")
                         }
