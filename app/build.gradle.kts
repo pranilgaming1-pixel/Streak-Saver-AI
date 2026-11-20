@@ -35,6 +35,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.1")
     ksp("androidx.room:room-compiler:2.7.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.media3:media3-exoplayer:1.6.1")
+    implementation("androidx.media3:media3-ui:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
