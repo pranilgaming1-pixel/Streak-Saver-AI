@@ -746,7 +746,7 @@ private fun EzoneMainScreen(
                                 val encoded = Uri.encode(q)
                                 EzoneBackend.request(
                                     context, "GET",
-                                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color&or=(username.ilike.*" + encoded + "*,display_name.ilike.*" + encoded + "*)&limit=40",
+                                    "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private&or=(username.ilike.*" + encoded + "*,display_name.ilike.*" + encoded + "*)&limit=40",
                                     token
                                 ) { result ->
                                     loading = false
@@ -764,20 +764,29 @@ private fun EzoneMainScreen(
                     } else {
                         LazyColumn(contentPadding = PaddingValues(bottom = 12.dp)) {
                             items(searchResults, key = { it.id }) { item ->
-                                ProfileRow(item, item.id in followingIds, {
+                                ProfileRow(item, item.id in followingIds, item.isPrivate, {
                                     targetProfileId = item.id
                                     tab = "Profile"
                                 }, {
                                     val isFollowing = item.id in followingIds
-                                    val method = if (isFollowing) "DELETE" else "POST"
-                                    val path = if (isFollowing) {
-                                        "/rest/v1/follows?follower_id=eq." + myId + "&following_id=eq." + item.id
-                                    } else "/rest/v1/follows"
-                                    val body = if (isFollowing) null else JSONObject().put("follower_id", myId).put("following_id", item.id)
-                                    EzoneBackend.request(context, method, path, token, body, if (body != null) "return=minimal" else null) { result ->
-                                        if (result.ok) {
-                                            followingIds = if (isFollowing) followingIds - item.id else followingIds + item.id
-                                        } else pageError = EzoneBackend.errorMessage(result, "Could not update follow.")
+                                    if (isFollowing) {
+                                        EzoneBackend.request(context, "DELETE", "/rest/v1/follows?follower_id=eq." + myId + "&following_id=eq." + item.id, token, prefer = "return=minimal") { result ->
+                                            if (result.ok) followingIds = followingIds - item.id else pageError = EzoneBackend.errorMessage(result, "Could not unfollow.")
+                                        }
+                                    } else if (item.isPrivate) {
+                                        EzoneBackend.request(context, "GET", "/rest/v1/follow_requests?select=id&follower_id=eq." + myId + "&owner_id=eq." + item.id + "&status=eq.pending&limit=1", token) { pending ->
+                                            val exists = pending.ok && try { JSONArray(pending.body).length() > 0 } catch (_: Exception) { false }
+                                            if (exists) Toast.makeText(context, "Follow request already sent.", Toast.LENGTH_SHORT).show()
+                                            else EzoneBackend.request(context, "POST", "/rest/v1/follow_requests", token, JSONObject().put("follower_id", myId).put("owner_id", item.id), "return=minimal") { result ->
+                                                if (result.ok) Toast.makeText(context, "Follow request sent.", Toast.LENGTH_SHORT).show()
+                                                else pageError = EzoneBackend.errorMessage(result, "Could not send follow request.")
+                                            }
+                                        }
+                                    } else {
+                                        val body = JSONObject().put("follower_id", myId).put("following_id", item.id)
+                                        EzoneBackend.request(context, "POST", "/rest/v1/follows", token, body, "return=minimal") { result ->
+                                            if (result.ok) followingIds = followingIds + item.id else pageError = EzoneBackend.errorMessage(result, "Could not follow.")
+                                        }
                                     }
                                 })
                                 HorizontalDivider(color = EzoneLine)
@@ -1727,7 +1736,7 @@ private fun ProfileHeader(
 }
 
 @Composable
-private fun ProfileRow(profile: EzoneProfile, following: Boolean, onOpen: () -> Unit, onFollow: () -> Unit) {
+private fun ProfileRow(profile: EzoneProfile, following: Boolean, isPrivate: Boolean, onOpen: () -> Unit, onFollow: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
         Avatar(profile.displayName.take(1).uppercase(), 42)
         Spacer(Modifier.width(11.dp))
@@ -1736,7 +1745,7 @@ private fun ProfileRow(profile: EzoneProfile, following: Boolean, onOpen: () -> 
             Text("@" + profile.username, color = EzoneMuted, fontSize = 11.sp)
             if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneMuted, fontSize = 11.sp, maxLines = 1)
         }
-        TextButton(onClick = onFollow) { Text(if (following) "Following" else "Follow", color = if (following) EzoneMuted else EzoneRed, fontSize = 12.sp) }
+        TextButton(onClick = onFollow) { Text(if (following) "Following" else if (isPrivate) "Request" else "Follow", color = if (following) EzoneMuted else EzoneRed, fontSize = 12.sp) }
     }
 }
 
