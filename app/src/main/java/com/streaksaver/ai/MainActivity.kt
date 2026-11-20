@@ -964,7 +964,24 @@ private fun EzoneMainScreen(
                     items(visibleProfilePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "empty" }) { rowPosts ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             rowPosts.forEach { post ->
-                                ProfilePostTile(context, post, Modifier.weight(1f))
+                                ProfilePostTile(
+                                    context, post, Modifier.weight(1f),
+                                    pinned = targetProfileId == myId && post.id in pinnedPostIds,
+                                    canPin = targetProfileId == myId,
+                                    onPin = {
+                                        val isPinned = post.id in pinnedPostIds
+                                        if (isPinned) {
+                                            EzoneBackend.request(context, "DELETE", "/rest/v1/profile_post_pins?user_id=eq." + myId + "&post_id=eq." + post.id, token, prefer = "return=minimal") { result ->
+                                                if (result.ok) pinnedPostIds = pinnedPostIds - post.id else pageError = EzoneBackend.errorMessage(result, "Could not unpin post.")
+                                            }
+                                        } else {
+                                            val payload = JSONObject().put("user_id", myId).put("post_id", post.id)
+                                            EzoneBackend.request(context, "POST", "/rest/v1/profile_post_pins", token, payload, "return=minimal") { result ->
+                                                if (result.ok) pinnedPostIds = pinnedPostIds + post.id else pageError = EzoneBackend.errorMessage(result, "Could not pin post.")
+                                            }
+                                        }
+                                    }
+                                )
                             }
                             repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
                         }
@@ -1832,7 +1849,7 @@ private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
 }
 
 @Composable
-private fun ProfilePostTile(context: Context, post: EzonePost, modifier: Modifier = Modifier) {
+private fun ProfilePostTile(context: Context, post: EzonePost, modifier: Modifier = Modifier, pinned: Boolean = false, canPin: Boolean = false, onPin: () -> Unit = {}) {
     val media = post.mediaPath
     Box(modifier.aspectRatio(0.82f).clip(RoundedCornerShape(10.dp)).background(EzoneSurface2).clickable {
         if (!media.isNullOrBlank()) {
@@ -1851,6 +1868,14 @@ private fun ProfilePostTile(context: Context, post: EzonePost, modifier: Modifie
             }
         }
         if (post.mediaType == "video") Text("▶", Modifier.align(Alignment.TopEnd).padding(6.dp), color = Color.White, fontSize = 12.sp)
+        if (canPin) {
+            Surface(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp).clickable(onClick = onPin),
+                color = Color(0xCC111111), shape = CircleShape
+            ) {
+                Text(if (pinned) "📌" else "＋", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+            }
+        }
     }
 }
 
