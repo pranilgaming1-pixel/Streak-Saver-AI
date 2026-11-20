@@ -154,7 +154,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
                 val array = JSONArray(response.body)
                 messages = (0 until array.length()).mapNotNull { i ->
                     val item = array.optJSONObject(i) ?: return@mapNotNull null
-                    EzoneDirectMessage(item.optString("id"), item.optString("sender_id"), item.optString("receiver_id"), item.optString("body"), item.optString("created_at"))
+                    EzoneDirectMessage(item.optString("id"), item.optString("sender_id"), item.optString("receiver_id"), item.optString("body"), item.optString("created_at"), item.optString("seen_at"))
                 }
                 error = ""
             } else error = EzoneBackend.errorMessage(response, "Could not load this chat.")
