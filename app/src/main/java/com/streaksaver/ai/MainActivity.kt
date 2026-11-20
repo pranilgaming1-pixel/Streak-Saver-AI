@@ -401,6 +401,7 @@ private fun EzoneMainScreen(
     var profile by remember { mutableStateOf<EzoneProfile?>(null) }
     var profilePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var savedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var explorePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var reelPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var searchText by remember { mutableStateOf("") }
@@ -424,6 +425,9 @@ private fun EzoneMainScreen(
     val myId = EzoneSession.userId
 
     LaunchedEffect(token, myId) {
+        EzoneBackend.request(context, "GET", "/rest/v1/profiles?select=is_private&id=eq." + myId + "&limit=1", token) { ownProfile ->
+            if (ownProfile.ok) isPrivateAccount = try { JSONArray(ownProfile.body).optJSONObject(0)?.optBoolean("is_private", false) ?: false } catch (_: Exception) { false }
+        }
         EzoneBackend.request(context, "GET", "/rest/v1/follows?select=following_id&follower_id=eq." + myId, token) { follows ->
             if (follows.ok) {
                 val arr = try { JSONArray(follows.body) } catch (_: Exception) { JSONArray() }
@@ -553,6 +557,20 @@ private fun EzoneMainScreen(
                         token
                     ) { result ->
                         isFollowingTarget = result.ok && try { JSONArray(result.body).length() > 0 } catch (_: Exception) { false }
+                    }
+                }
+            }
+            "Saved" -> {
+                loading = true
+                EzoneBackend.request(context, "GET", "/rest/v1/saved_posts?select=post_id&user_id=eq." + myId + "&order=created_at.desc&limit=100", token) { saved ->
+                    if (!saved.ok) { loading = false; pageError = EzoneBackend.errorMessage(saved, "Could not load saved posts.") }
+                    else {
+                        val ids = try { val arr = JSONArray(saved.body); (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("post_id") }.filter { it.isNotBlank() } } catch (_: Exception) { emptyList() }
+                        if (ids.isEmpty()) { savedPosts = emptyList(); loading = false }
+                        else EzoneBackend.request(context, "GET", "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&id=in.(" + ids.joinToString(",") + ")&order=created_at.desc", token) { posts ->
+                            loading = false
+                            if (posts.ok) savedPosts = EzoneBackend.parsePosts(posts.body) else pageError = EzoneBackend.errorMessage(posts, "Could not load saved posts.")
+                        }
                     }
                 }
             }
@@ -790,8 +808,24 @@ private fun EzoneMainScreen(
                         }
                     },
                     onFollowRequests = { followRequestsOpen = true },
+                    onSavedPosts = { tab = "Saved" },
                     onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) }
                 )
+            }
+            "Saved" -> {
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    item { Text("Saved posts", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(18.dp)) }
+                    if (loading && savedPosts.isEmpty()) item { LoadingLine("Loading saved posts…") }
+                    if (!loading && savedPosts.isEmpty()) item { EmptyState("Nothing saved yet", "Tap the bookmark icon on a post to keep it here.") }
+                    items(savedPosts, key = { it.id }) { post ->
+                        PostCard(context, post, myId, autoplayFeedVideos, dataSaver,
+                            onLike = { likePost(context, token, myId, post) { reloadKey++ } },
+                            onComments = { activeCommentsPost = post },
+                            onProfile = { id -> targetProfileId = id; tab = "Profile" })
+                        HorizontalDivider(color = EzoneLine)
+                    }
+                    if (pageError.isNotBlank()) item { ErrorLine(pageError) }
+                }
             }
             "Activity" -> {
                 if (loading && notifications.isEmpty()) LoadingLine("Loading activity…")
@@ -956,6 +990,7 @@ private fun EzoneSettingsScreen(
     isPrivateAccount: Boolean,
     onPrivateAccountChange: (Boolean) -> Unit,
     onFollowRequests: () -> Unit,
+    onSavedPosts: () -> Unit,
     onSignOut: () -> Unit
 ) {
     var passwordDialog by remember { mutableStateOf(false) }
@@ -977,6 +1012,7 @@ private fun EzoneSettingsScreen(
             SettingsSection("PRIVACY & SAFETY")
             SettingsToggle("Private account", "Only approved followers can see your posts and Stories.", isPrivateAccount, onPrivateAccountChange)
             SettingsAction("Follow requests", "Review people asking to follow you", "›", onFollowRequests)
+            SettingsAction("Saved posts", "Open the posts you bookmarked", "›", onSavedPosts)
             SettingsInfo("Notifications", "In-app activity is available in the Activity tab. Push notifications still require notification delivery credentials and device registration.")
             SettingsSection("ABOUT")
             SettingsInfo("Ezone", "A social space for photos, videos, short-form clips and conversations.")
