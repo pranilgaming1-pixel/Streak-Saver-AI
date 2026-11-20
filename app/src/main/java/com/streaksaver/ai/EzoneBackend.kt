@@ -182,10 +182,17 @@ object EzoneBackend {
                 if (!base.startsWith("https://") || key.isBlank()) {
                     ApiResponse(false, 0, "Supabase URL or publishable key is missing.")
                 } else {
+                    val size = try {
+                        appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+                    } catch (_: Exception) { -1L }
+                    if (size > 104857600L) {
+                        ApiResponse(false, 413, "Choose a photo, video or audio file smaller than 100 MB.")
+                    } else {
                     val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
                     val encodedPath = Uri.encode(remotePath, "/")
                     val streamingBody = object : RequestBody() {
                         override fun contentType() = mime.toMediaTypeOrNull()
+                        override fun contentLength(): Long = size
                         override fun writeTo(sink: BufferedSink) {
                             val input = appContext.contentResolver.openInputStream(uri)
                                 ?: throw IllegalStateException("Could not read the selected media.")
@@ -201,6 +208,7 @@ object EzoneBackend {
                         .build()
                     client.newCall(request).execute().use { result ->
                         ApiResponse(result.isSuccessful, result.code, result.body?.string().orEmpty())
+                    }
                     }
                 }
             } catch (e: Exception) {
