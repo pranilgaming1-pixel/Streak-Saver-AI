@@ -21,21 +21,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
 
-private val MsgBg = Color(0xFF050607)
-private val MsgSurface = Color(0xFF101316)
-private val MsgSurface2 = Color(0xFF1B252B)
-private val MsgText = Color(0xFFF6F8FA)
-private val MsgMuted = Color(0xFF9AA5AD)
-private val MsgBlue = Color(0xFF8EDBFF)
-private val MsgLine = Color(0xFF29333A)
+private val MsgBg = Color(0xFF050505)
+private val MsgSurface = Color(0xFF111111)
+private val MsgSurface2 = Color(0xFF1B1B1B)
+private val MsgText = Color(0xFFFFFFFF)
+private val MsgMuted = Color(0xFFAAAAAA)
+private val MsgRed = Color(0xFFED233C)
+private val MsgLine = Color(0xFF292929)
 
 private data class EzoneDirectMessage(
     val id: String,
     val sender: String,
     val receiver: String,
     val body: String,
-    val created: String
+    val created: String,
+    val seenAt: String
 )
 
 @Composable
@@ -49,14 +51,14 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
     LaunchedEffect(refresh) {
         loading = true
         EzoneBackend.request(context, "GET",
-            "/rest/v1/direct_messages?select=id,sender_id,receiver_id,body,created_at&or=(sender_id.eq." + me + ",receiver_id.eq." + me + ")&order=created_at.desc&limit=300",
+            "/rest/v1/direct_messages?select=id,sender_id,receiver_id,body,created_at,seen_at&or=(sender_id.eq." + me + ",receiver_id.eq." + me + ")&order=created_at.desc&limit=300",
             EzoneSession.accessToken) { response ->
             loading = false
             if (response.ok) {
                 val array = JSONArray(response.body)
                 messages = (0 until array.length()).mapNotNull { i ->
                     val item = array.optJSONObject(i) ?: return@mapNotNull null
-                    EzoneDirectMessage(item.optString("id"), item.optString("sender_id"), item.optString("receiver_id"), item.optString("body"), item.optString("created_at"))
+                    EzoneDirectMessage(item.optString("id"), item.optString("sender_id"), item.optString("receiver_id"), item.optString("body"), item.optString("created_at"), item.optString("seen_at"))
                 }
                 val ids = messages.map { if (it.sender == me) it.receiver else it.sender }.distinct()
                 if (ids.isNotEmpty()) {
@@ -76,12 +78,12 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
                 Text("Messages", color = MsgText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text("Your private conversations", color = MsgMuted, fontSize = 12.sp)
             }
-            TextButton(onClick = { refresh++ }) { Text("Refresh", color = MsgBlue) }
+            TextButton(onClick = { refresh++ }) { Text("Refresh", color = MsgRed) }
         }
         HorizontalDivider(color = MsgLine)
         if (loading && messages.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MsgBlue)
+                CircularProgressIndicator(color = MsgRed)
             }
         } else if (error.isNotBlank()) {
             Text(error, color = Color(0xFFFF9D9D), modifier = Modifier.padding(18.dp))
@@ -102,12 +104,18 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
                             onOpenChat(entry.key, person?.displayName ?: "Ezone member")
                         }.padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(48.dp).clip(CircleShape).background(MsgSurface2), contentAlignment = Alignment.Center) {
-                                Text(person?.displayName?.take(1)?.uppercase() ?: "E", color = MsgBlue, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                                Text(person?.displayName?.take(1)?.uppercase() ?: "E", color = MsgRed, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.width(13.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(person?.displayName ?: "Ezone member", color = MsgText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(entry.value?.body.orEmpty(), color = MsgMuted, fontSize = 12.sp, maxLines = 1)
+                                Text(
+                                    if (entry.value?.sender == me && entry.value?.seenAt?.isNotBlank() == true)
+                                        "Seen · " + entry.value?.body.orEmpty()
+                                    else entry.value?.body.orEmpty(),
+                                    color = if (entry.value?.sender == me && entry.value?.seenAt?.isNotBlank() == true) MsgRed else MsgMuted,
+                                    fontSize = 12.sp, maxLines = 1
+                                )
                             }
                             Text(entry.value?.created?.substringAfter("T")?.take(5).orEmpty(), color = MsgMuted, fontSize = 10.sp)
                         }
@@ -130,9 +138,16 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
     val me = EzoneSession.userId
     LaunchedEffect(otherUserId, refresh) {
         loading = true
+        EzoneBackend.request(
+            context, "PATCH",
+            "/rest/v1/direct_messages?sender_id=eq." + otherUserId + "&receiver_id=eq." + me + "&seen_at=is.null",
+            EzoneSession.accessToken,
+            JSONObject().put("seen_at", Instant.now().toString()),
+            "return=minimal"
+        ) { }
         val filter = "or=(and(sender_id.eq." + me + ",receiver_id.eq." + otherUserId + "),and(sender_id.eq." + otherUserId + ",receiver_id.eq." + me + "))"
         EzoneBackend.request(context, "GET",
-            "/rest/v1/direct_messages?select=id,sender_id,receiver_id,body,created_at&" + filter + "&order=created_at.asc&limit=300",
+            "/rest/v1/direct_messages?select=id,sender_id,receiver_id,body,created_at,seen_at&" + filter + "&order=created_at.asc&limit=300",
             EzoneSession.accessToken) { response ->
             loading = false
             if (response.ok) {
@@ -162,7 +177,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = if (msg.sender == me) Arrangement.End else Arrangement.Start) {
                             Box(Modifier.padding(vertical = 4.dp).widthIn(max = 240.dp)
                                 .clip(RoundedCornerShape(17.dp))
-                                .background(if (msg.sender == me) MsgBlue else MsgSurface2)
+                                .background(if (msg.sender == me) MsgRed else MsgSurface2)
                                 .padding(horizontal = 13.dp, vertical = 9.dp)) {
                                 Text(msg.body, color = if (msg.sender == me) Color(0xFF061018) else MsgText, fontSize = 13.sp)
                             }
@@ -176,7 +191,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
                         modifier = Modifier.weight(1f), placeholder = { Text("Message…", color = MsgMuted) },
                         maxLines = 3, colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = MsgText, unfocusedTextColor = MsgText,
-                            focusedBorderColor = MsgBlue, unfocusedBorderColor = MsgLine,
+                            focusedBorderColor = MsgRed, unfocusedBorderColor = MsgLine,
                             focusedContainerColor = MsgBg, unfocusedContainerColor = MsgBg
                         ))
                     Spacer(Modifier.width(6.dp))
@@ -189,12 +204,12 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
                             if (response.ok) { draft = ""; refresh++ }
                             else error = EzoneBackend.errorMessage(response, "Message could not be sent.")
                         }
-                    }, colors = ButtonDefaults.buttonColors(containerColor = MsgBlue, contentColor = Color(0xFF061018))) {
+                    }, colors = ButtonDefaults.buttonColors(containerColor = MsgRed, contentColor = Color(0xFF061018))) {
                         Text(if (sending) "…" else "Send")
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = MsgBlue) } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = MsgRed) } }
     )
 }
