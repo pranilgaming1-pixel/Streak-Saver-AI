@@ -741,3 +741,40 @@ revoke all on function public.ezone_notify_like() from public, anon, authenticat
 revoke all on function public.ezone_notify_follow() from public, anon, authenticated;
 revoke all on function public.ezone_notify_message() from public, anon, authenticated;
 
+
+
+-- Enforce private-account visibility for Stories as well as posts.
+drop policy if exists "Ezone members read active stories" on public.stories;
+create policy "Ezone members read active stories" on public.stories
+for select to authenticated
+using (
+  expires_at > now()
+  and (
+    user_id = auth.uid()
+    or (
+      exists (
+        select 1 from public.profiles p
+        where p.id = stories.user_id
+          and p.is_private = false
+      )
+      and audience = 'public'
+    )
+    or (
+      audience = 'followers'
+      and exists (
+        select 1 from public.follows f
+        where f.follower_id = auth.uid()
+          and f.following_id = stories.user_id
+      )
+    )
+    or (
+      audience = 'close_friends'
+      and exists (
+        select 1 from public.close_friends cf
+        where cf.owner_id = stories.user_id
+          and cf.friend_id = auth.uid()
+      )
+    )
+  )
+);
+notify pgrst, 'reload schema';
