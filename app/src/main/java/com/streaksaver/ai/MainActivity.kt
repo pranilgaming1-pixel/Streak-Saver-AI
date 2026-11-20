@@ -965,6 +965,9 @@ private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> 
 private fun StoryViewer(context: Context, story: JSONObject, onDismiss: () -> Unit) {
     val mediaUrl = EzoneBackend.mediaUrl(context, story.optString("media_path"))
     val owner = story.optJSONObject("profiles")
+    var reply by remember(story.optString("id")) { mutableStateOf("") }
+    var sendingReply by remember(story.optString("id")) { mutableStateOf(false) }
+    var replyNotice by remember(story.optString("id")) { mutableStateOf("") }
     LaunchedEffect(story.optString("id")) {
         val ownerId = story.optString("user_id")
         if (ownerId.isNotBlank() && ownerId != EzoneSession.userId) {
@@ -987,6 +990,53 @@ private fun StoryViewer(context: Context, story: JSONObject, onDismiss: () -> Un
                     Text(story.optString("created_at").substringBefore("T"), color = Color.LightGray, fontSize = 10.sp)
                 }
                 TextButton(onClick = onDismiss) { Text("✕", color = Color.White, fontSize = 22.sp) }
+            }
+            if (owner?.optString("id").orEmpty().isNotBlank() && owner?.optString("id") != EzoneSession.userId) {
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD000000))))
+                    .navigationBarsPadding().padding(horizontal = 16.dp, vertical = 18.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        listOf("❤️", "😂", "🔥", "👏").forEach { emoji ->
+                            TextButton(enabled = !sendingReply, onClick = {
+                                sendingReply = true
+                                val payload = JSONObject().put("sender_id", EzoneSession.userId)
+                                    .put("receiver_id", story.optString("user_id"))
+                                    .put("body", emoji + " Replied to your story")
+                                EzoneBackend.request(context, "POST", "/rest/v1/direct_messages",
+                                    EzoneSession.accessToken, payload, "return=minimal") { result ->
+                                    sendingReply = false
+                                    replyNotice = if (result.ok) "Reaction sent" else EzoneBackend.errorMessage(result, "Could not send reaction.")
+                                }
+                            }) { Text(emoji, fontSize = 22.sp) }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(value = reply, onValueChange = { reply = it.take(1000) },
+                            modifier = Modifier.weight(1f), singleLine = true,
+                            placeholder = { Text("Reply to story…", color = Color.LightGray) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                                focusedBorderColor = EzoneRed, unfocusedBorderColor = Color.Gray,
+                                focusedContainerColor = Color(0x55000000), unfocusedContainerColor = Color(0x55000000)
+                            ))
+                        Spacer(Modifier.width(8.dp))
+                        Button(enabled = reply.trim().isNotEmpty() && !sendingReply, onClick = {
+                            sendingReply = true
+                            val payload = JSONObject().put("sender_id", EzoneSession.userId)
+                                .put("receiver_id", story.optString("user_id")).put("body", reply.trim())
+                            EzoneBackend.request(context, "POST", "/rest/v1/direct_messages",
+                                EzoneSession.accessToken, payload, "return=minimal") { result ->
+                                sendingReply = false
+                                if (result.ok) { reply = ""; replyNotice = "Reply sent to messages" }
+                                else replyNotice = EzoneBackend.errorMessage(result, "Could not send reply.")
+                            }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = EzoneRed, contentColor = Color.White)) {
+                            Text(if (sendingReply) "…" else "Send")
+                        }
+                    }
+                    if (replyNotice.isNotBlank()) Text(replyNotice, color = Color.White, fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 5.dp))
+                }
             }
         }
     }
@@ -1298,7 +1348,6 @@ private fun PostCard(
                 catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable on this device.", Toast.LENGTH_SHORT).show() }
             }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("➤", color = EzoneWhite, fontSize = 17.sp) }
         }
-        if (post.body.isNotBlank()) Text(post.body, color = EzoneWhite, fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(start = 8.dp, bottom = 5.dp))
     }
 }
 
