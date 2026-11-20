@@ -632,7 +632,7 @@ private fun EzoneMainScreen(
                     } else {
                         items(feedPosts, key = { it.id }) { post ->
                             PostCard(
-                                context, post, myId,
+                                context, post, myId, autoplayFeedVideos, dataSaver,
                                 onLike = { likePost(context, token, myId, post) { reloadKey++ } },
                                 onComments = { activeCommentsPost = post },
                                 onProfile = { id ->
@@ -677,7 +677,7 @@ private fun EzoneMainScreen(
                     if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
                     if (explorePosts.isEmpty() && !loading) item { EmptyState("Your Explore is waiting", "When members share photos and videos, they will appear here.") }
                     items(explorePosts, key = { it.id }) { post ->
-                        PostCard(context, post, myId,
+                        PostCard(context, post, myId, autoplayFeedVideos, dataSaver,
                             onLike = { likePost(context, token, myId, post) { reloadKey++ } },
                             onComments = { activeCommentsPost = post },
                             onProfile = { id -> targetProfileId = id; tab = "Profile" })
@@ -1437,6 +1437,8 @@ private fun PostCard(
     context: Context,
     post: EzonePost,
     myId: String,
+    autoplayFeedVideos: Boolean,
+    dataSaver: Boolean,
     onLike: () -> Unit,
     onComments: () -> Unit,
     onProfile: (String) -> Unit
