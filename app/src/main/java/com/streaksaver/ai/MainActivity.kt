@@ -828,7 +828,7 @@ private fun EzoneMainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
+            listOf("Home", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item
                 TextButton(onClick = {
                     tab = item
@@ -837,7 +837,7 @@ private fun EzoneMainScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(color = if (selected || item == "Create") Color(0xFF42101A) else Color.Transparent, shape = RoundedCornerShape(13.dp)) {
                             Box(Modifier.size(width = if (item == "Create") 43.dp else 40.dp, height = 38.dp), contentAlignment = Alignment.Center) {
-                                Text(when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" }, color = if (selected) EzoneWhite else EzoneMuted, fontSize = if (item == "Create") 26.sp else 21.sp, fontWeight = FontWeight.SemiBold)
+                                Text(when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▶"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" }, color = if (selected) EzoneWhite else EzoneMuted, fontSize = if (item == "Create") 26.sp else 21.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         
