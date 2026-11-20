@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 data class ApiResponse(val ok: Boolean, val status: Int, val body: String)
-data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null, val website: String = "", val location: String = "", val pronouns: String = "", val accentColor: String = "#ED233C")
+data class EzoneProfile(val id: String, val username: String, val displayName: String, val bio: String = "", val avatarUrl: String? = null, val website: String = "", val location: String = "", val pronouns: String = "", val accentColor: String = "#ED233C", val isPrivate: Boolean = false)
 data class EzonePost(val id: String, val userId: String, val body: String, val mediaPath: String?, val mediaType: String?, val createdAt: String, val author: EzoneProfile?, val likedBy: Set<String>, val musicPath: String? = null, val musicTitle: String? = null, val musicArtist: String? = null)
 data class EzoneComment(val id: String, val userId: String, val body: String, val createdAt: String)
 data class EzoneNotification(val id: String, val type: String, val message: String, val createdAt: String)
@@ -272,7 +272,8 @@ object EzoneBackend {
                 item.optString("website").takeIf { it != "null" }.orEmpty(),
                 item.optString("location").takeIf { it != "null" }.orEmpty(),
                 item.optString("pronouns").takeIf { it != "null" }.orEmpty(),
-                item.optString("accent_color").takeIf { it != "null" }.orEmpty().ifBlank { "#ED233C" }
+                item.optString("accent_color").takeIf { it != "null" }.orEmpty().ifBlank { "#ED233C" },
+                item.optBoolean("is_private", false)
             )
         }
     }
