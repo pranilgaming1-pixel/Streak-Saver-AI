@@ -403,6 +403,9 @@ private fun EzoneMainScreen(
     var taggedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var pinnedPostIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var profileSection by remember { mutableStateOf("Posts") }
+    var showProfileInsights by remember { mutableStateOf(false) }
+    var profileActionDialog by remember { mutableStateOf("") }
+    var reportReason by remember { mutableStateOf("spam") }
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var savedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var explorePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
@@ -942,7 +945,10 @@ private fun EzoneMainScreen(
                                 onSignOut = { EzoneSession.clear(context); EzoneSession.setRecoveryMode(context, false) },
                                 postCount = profilePosts.size,
                                 followerCount = profileFollowerCount,
-                                followingCount = profileFollowingCount
+                                followingCount = profileFollowingCount,
+                                onInsights = { showProfileInsights = true },
+                                onBlock = { profileActionDialog = "block" },
+                                onReport = { profileActionDialog = "report" }
                             )
                             HorizontalDivider(color = EzoneLine)
                         } else {
@@ -1771,6 +1777,9 @@ private fun ProfileHeader(
     onMessage: () -> Unit,
     onFollow: () -> Unit,
     onSignOut: () -> Unit,
+    onInsights: () -> Unit = {},
+    onBlock: () -> Unit = {},
+    onReport: () -> Unit = {},
     isFollowPending: Boolean = false,
     postCount: Int = 0,
     followerCount: Int = 0,
@@ -1802,10 +1811,16 @@ private fun ProfileHeader(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isOwn) {
                 Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
-                OutlinedButton(onClick = onSignOut, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Log out", color = EzoneMuted) }
+                OutlinedButton(onClick = onInsights, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Insights", color = EzoneWhite) }
             } else {
                 Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) { Text(if (isFollowing) "Following" else if (isFollowPending) "Requested" else "Follow", color = EzoneWhite) }
                 OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite) }
+            }
+        }
+        if (!isOwn) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                TextButton(onClick = onBlock) { Text("Block", color = EzoneMuted, fontSize = 11.sp) }
+                TextButton(onClick = onReport) { Text("Report", color = EzoneRed, fontSize = 11.sp) }
             }
         }
     }
