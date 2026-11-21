@@ -896,21 +896,40 @@ private fun EzoneMainScreen(
                 }
             }
             "Activity" -> {
-                if (loading && notifications.isEmpty()) LoadingLine("Loading activity…")
-                if (notifications.isEmpty() && !loading) EmptyState("Nothing new yet", "Likes, comments and new followers will appear here.")
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
-                    items(notifications, key = { it.id }) { notification ->
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(38.dp).background(Color(0xFF202020), CircleShape), contentAlignment = Alignment.Center) {
-                                Text(notification.type.take(1).uppercase(), color = EzoneRed, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(notification.message, color = EzoneWhite, fontSize = 13.sp)
-                                Text(notification.createdAt.substringBefore("T"), color = EzoneMuted, fontSize = 11.sp)
+                Column(Modifier.weight(1f)) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                        Text("Activity", color = EzoneWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                        listOf("All", "Mentions", "Replies", "Verified").forEach { filter ->
+                            Column(Modifier.weight(1f).clickable { activityFilter = filter }.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(filter, color = if (activityFilter == filter) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (activityFilter == filter) FontWeight.Bold else FontWeight.Normal)
+                                Spacer(Modifier.height(8.dp))
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(if (activityFilter == filter) EzoneWhite else Color.Transparent))
                             }
                         }
-                        HorizontalDivider(color = EzoneLine)
+                    }
+                    if (loading && notifications.isEmpty()) LoadingLine("Loading activity…")
+                    if (notifications.isEmpty() && !loading) EmptyState("Nothing new yet", "Likes, comments and new followers will appear here.")
+                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                        items(notifications.filter { n ->
+                            activityFilter == "All" ||
+                            (activityFilter == "Mentions" && n.type.contains("mention", true)) ||
+                            (activityFilter == "Replies" && (n.type.contains("reply", true) || n.type.contains("comment", true))) ||
+                            (activityFilter == "Verified" && n.type.contains("verified", true))
+                        }, key = { it.id }) { notification ->
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(38.dp).background(EzoneSurface2, CircleShape), contentAlignment = Alignment.Center) {
+                                    Text(notification.type.take(1).uppercase(), color = EzoneWhite, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(notification.message, color = EzoneWhite, fontSize = 13.sp)
+                                    Text(notification.createdAt.substringBefore("T"), color = EzoneMuted, fontSize = 11.sp)
+                                }
+                            }
+                            HorizontalDivider(color = EzoneLine)
+                        }
                     }
                 }
             }
@@ -1157,9 +1176,19 @@ private fun EzoneSettingsScreen(
     var passwordDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text("Your Ezone", color = EzoneWhite, fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
-            Text("Make your space feel like yours.", color = EzoneMuted, fontSize = 12.sp)
-            Spacer(Modifier.height(18.dp))
+            Text("Settings", color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(EzoneSurface).clickable(onClick = onEditProfile).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Avatar(EzoneSession.email.substringBefore("@").take(1).uppercase().ifBlank { "E" }, 48)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(EzoneSession.email.substringBefore("@").ifBlank { "Ezone member" }, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(EzoneSession.email, color = EzoneMuted, fontSize = 10.sp)
+                    Text("View profile", color = EzoneMuted, fontSize = 10.sp)
+                }
+                Text("›", color = EzoneWhite, fontSize = 22.sp)
+            }
+            Spacer(Modifier.height(12.dp))
             SettingsSection("ACCOUNT")
             SettingsAction("Edit profile", "Name, username, bio and profile photo", "›", onEditProfile)
             SettingsAction("Change password", "Update your account password", "›", { passwordDialog = true })
@@ -1315,12 +1344,13 @@ private fun SettingsSection(title: String) {
 
 @Composable
 private fun SettingsAction(title: String, subtitle: String, trailing: String, onClick: () -> Unit, danger: Boolean = false) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(EzoneSurface).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EzoneSurface).clickable(onClick = onClick).padding(horizontal = 13.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(when(title) { "Account" -> "♙"; "Privacy" -> "♧"; "Notifications" -> "♧"; "Appearance" -> "◐"; "Data usage" -> "⌁"; "Help" -> "?"; "About Ezone" -> "ⓘ"; else -> "♙" }, color = EzoneWhite, fontSize = 17.sp, modifier = Modifier.width(34.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) Color(0xFFFF8997) else EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = if (danger) EzoneWhite else EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
         }
-        Text(trailing, color = if (danger) EzoneRed else EzoneMuted, fontSize = 19.sp)
+        Text(trailing, color = EzoneMuted, fontSize = 20.sp)
     }
 }
 
