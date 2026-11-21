@@ -54,19 +54,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.delay
 
-private val EzoneBlack = Color(0xFF050505)
-private val EzoneSurface = Color(0xFF111111)
-private val EzoneSurface2 = Color(0xFF1B1B1B)
+private val EzoneBlack = Color(0xFF070B12)
+private val EzoneSurface = Color(0xFF101927)
+private val EzoneSurface2 = Color(0xFF172638)
 private val EzoneWhite = Color(0xFFFFFFFF)
-private val EzoneMuted = Color(0xFFAAAAAA)
-private val EzoneRed = Color(0xFFFFFFFF)
-private val EzoneLine = Color(0xFF292929)
+private val EzoneMuted = Color(0xFF91A3B8)
+private val EzoneRed = Color(0xFF78D8FF)
+private val EzoneLine = Color(0xFF24364A)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = AndroidColor.rgb(5, 5, 5)
-        window.navigationBarColor = AndroidColor.rgb(5, 5, 5)
+        window.statusBarColor = AndroidColor.rgb(7, 11, 18)
+        window.navigationBarColor = AndroidColor.rgb(7, 11, 18)
         EzoneSession.restore(this)
         handleAuthCallback(intent)
         setContent { EzoneApp(this) }
@@ -654,7 +654,7 @@ private fun EzoneMainScreen(
 
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Row(
-            Modifier.fillMaxWidth().height(58.dp).background(EzoneBlack).padding(horizontal = 17.dp),
+            Modifier.fillMaxWidth().height(62.dp).background(Brush.horizontalGradient(listOf(Color(0xFF0B1421), Color(0xFF101F31), Color(0xFF0B1421)))).padding(horizontal = 17.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(34.dp).clickable { if (tab == "Home") tab = "Home" else { tab = "Home"; targetProfileId = myId } }, contentAlignment = Alignment.CenterStart) {
@@ -1061,7 +1061,7 @@ private fun EzoneMainScreen(
         }
         HorizontalDivider(color = Color(0xFF242424))
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().background(EzoneBlack).padding(horizontal = 8.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFF0A111C)).padding(horizontal = 8.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1069,6 +1069,8 @@ private fun EzoneMainScreen(
                 val selected = tab == item
                 Column(
                     Modifier.weight(1f).heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(if (selected) Color(0xFF142B40) else Color.Transparent)
                         .semantics { contentDescription = "$item tab" }
                         .clickable {
                             tab = item
@@ -1079,7 +1081,7 @@ private fun EzoneMainScreen(
                 ) {
                     Text(
                         when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▷"; "Create" -> "⊞"; "Activity" -> "♡"; else -> "♙" },
-                        color = if (selected) EzoneWhite else Color(0xFF8B8B8B),
+                        color = if (selected) EzoneRed else Color(0xFF8293A7),
                         fontSize = if (item == "Create") 25.sp else 24.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
