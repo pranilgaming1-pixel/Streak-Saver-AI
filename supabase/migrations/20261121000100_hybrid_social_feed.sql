@@ -5,7 +5,9 @@
 
 begin;
 
-do $$
+create schema if not exists private;
+
+do $
 begin
   create type public.ezone_post_format as enum ('reel', 'photo', 'carousel');
 exception when duplicate_object then null;
@@ -90,6 +92,7 @@ begin
 end;
 $;
 drop trigger if exists ezone_infer_post_format on public.posts;
+revoke all on function private.ezone_infer_post_format() from public, anon, authenticated;
 create trigger ezone_infer_post_format
   before insert or update of media_type, post_format on public.posts
   for each row execute function private.ezone_infer_post_format();
