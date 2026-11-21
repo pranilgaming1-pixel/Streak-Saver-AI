@@ -36,7 +36,8 @@ alter table public.posts
   add column if not exists likes_count bigint not null default 0,
   add column if not exists comments_count bigint not null default 0,
   add column if not exists shares_count bigint not null default 0,
-  add column if not exists views_count bigint not null default 0;
+  add column if not exists views_count bigint not null default 0,
+  add column if not exists completion_rate numeric(6,5) not null default 0;
 
 alter table public.posts
   drop constraint if exists posts_likes_count_nonnegative,
@@ -486,9 +487,14 @@ begin
     target_post := new.post_id;
   end if;
   if change_by <> 0 then
-    update public.posts
-      set views_count = greatest(views_count + change_by, 0)
-      where id = target_post;
+    update public.posts p
+      set views_count = greatest(p.views_count + change_by, 0),
+          completion_rate = coalesce((
+            select sum(pv.completed_count)::numeric / nullif(sum(pv.view_count), 0)
+            from public.post_views pv
+            where pv.post_id = target_post
+          ), 0)
+      where p.id = target_post;
   end if;
   if tg_op = 'DELETE' then return old; else return new; end if;
 end;
@@ -669,14 +675,7 @@ begin
           p.likes_count::numeric
           + (p.comments_count::numeric * 3)
           + (p.shares_count::numeric * 5)
-          + (
-            coalesce((
-              select sum(pv.completed_count)::numeric
-                     / nullif(sum(pv.view_count), 0)
-              from public.post_views pv
-              where pv.post_id = p.id
-            ), 0) * 10
-          )
+          + (p.completion_rate * 10)
         )
         / power(
             greatest(extract(epoch from (now() - p.created_at)) / 3600.0, 0) + 2.0,
