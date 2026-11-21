@@ -56,7 +56,7 @@ private val EzoneSurface = Color(0xFF111111)
 private val EzoneSurface2 = Color(0xFF1B1B1B)
 private val EzoneWhite = Color(0xFFFFFFFF)
 private val EzoneMuted = Color(0xFFAAAAAA)
-private val EzoneRed = Color(0xFFED233C)
+private val EzoneRed = Color(0xFFFFFFFF)
 private val EzoneLine = Color(0xFF292929)
 
 class MainActivity : ComponentActivity() {
@@ -509,15 +509,35 @@ private fun EzoneMainScreen(
                 }
             }
             "Explore" -> {
-                loading = true
-                EzoneBackend.request(
-                    context, "GET",
-                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&media_path=not.is.null&order=created_at.desc&limit=60",
-                    token
-                ) { result ->
-                    loading = false
-                    if (result.ok) explorePosts = EzoneBackend.parsePosts(result.body)
-                    else pageError = EzoneBackend.errorMessage(result, "Could not load Explore.")
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Explore", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(38.dp).clickable { tab = "Search" }) {
+                                    Box(contentAlignment = Alignment.Center) { Text("⌕", color = EzoneWhite, fontSize = 23.sp) }
+                                }
+                            }
+                            Text("Discover what the Ezone community is sharing.", color = EzoneMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("For you", "Trending", "Recent").forEachIndexed { index, filter ->
+                                    Surface(color = if (index == 0) Color(0xFF292929) else EzoneSurface, shape = RoundedCornerShape(18.dp)) {
+                                        Text(filter, color = if (index == 0) EzoneWhite else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
+                                    }
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = EzoneLine)
+                    }
+                    if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
+                    if (explorePosts.isEmpty() && !loading) item { EmptyState("Your Explore is waiting", "When members share photos and videos, they will appear here.") }
+                    items(explorePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "explore-empty" }) { rowPosts ->
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            rowPosts.forEach { post -> ProfilePostTile(context, post, Modifier.weight(1f)) }
+                            repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    if (pageError.isNotBlank()) item { ErrorLine(pageError) }
                 }
             }
             "Reels" -> {
@@ -675,12 +695,12 @@ private fun EzoneMainScreen(
                         val active = feedMode == item
                         Box(
                             Modifier.weight(1f).clip(RoundedCornerShape(13.dp))
-                                .background(if (active) Color(0xFF351017) else EzoneSurface)
+                                .background(if (active) Color(0xFF242424) else EzoneSurface)
                                 .clickable { feedMode = item; appPrefs.edit().putString("default_feed", item).apply() }
                                 .padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(item, color = if (active) Color(0xFFFF8190) else EzoneMuted, fontSize = 12.sp,
+                            Text(item, color = if (active) Color(0xFFFFFFFF) else EzoneMuted, fontSize = 12.sp,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
                         }
                     }
@@ -736,7 +756,7 @@ private fun EzoneMainScreen(
                             Spacer(Modifier.height(12.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("For you", "Reels").forEach { filter ->
-                                    Surface(color = if (filter == "For you") Color(0xFF211014) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
+                                    Surface(color = if (filter == "For you") Color(0xFF202020) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
                                         Text(filter, color = if (filter == "For you") EzoneRed else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
                                     }
                                 }
@@ -905,7 +925,7 @@ private fun EzoneMainScreen(
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     items(notifications, key = { it.id }) { notification ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(38.dp).background(Color(0xFF211014), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(38.dp).background(Color(0xFF202020), CircleShape), contentAlignment = Alignment.Center) {
                                 Text(notification.type.take(1).uppercase(), color = EzoneRed, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.width(12.dp))
@@ -1013,7 +1033,7 @@ private fun EzoneMainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("Home", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
+            listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item
                 Column(
                     Modifier.weight(1f).clip(RoundedCornerShape(15.dp)).clickable {
@@ -1026,12 +1046,12 @@ private fun EzoneMainScreen(
                     Box(
                         Modifier.size(if (item == "Create") 39.dp else 34.dp)
                             .clip(RoundedCornerShape(if (item == "Create") 12.dp else 11.dp))
-                            .background(if (item == "Create") EzoneRed else if (selected) Color(0xFF351017) else Color.Transparent),
+                            .background(if (item == "Create") EzoneRed else if (selected) Color(0xFF242424) else Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▶"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" },
-                            color = if (item == "Create") Color.White else if (selected) Color(0xFFFF687B) else Color(0xFF929292),
+                            when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" },
+                            color = if (item == "Create") Color.White else if (selected) Color(0xFFFFFFFF) else Color(0xFF929292),
                             fontSize = if (item == "Create") 25.sp else 21.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -2019,7 +2039,7 @@ private fun ProfileHeader(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(94.dp).clip(CircleShape)
-                    .background(Brush.sweepGradient(listOf(accentColor, Color(0xFFFF8290), accentColor)))
+                    .background(Brush.sweepGradient(listOf(accentColor, Color(0xFFBDBDBD), accentColor)))
                     .padding(3.dp).clip(CircleShape).background(EzoneBlack).padding(3.dp)
             ) { Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl) }
             Spacer(Modifier.width(18.dp))
