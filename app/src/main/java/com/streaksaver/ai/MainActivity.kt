@@ -2144,7 +2144,7 @@ private fun ProfileStat(value: String, label: String) {
 @Composable
 private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 10.dp, vertical = 5.dp)) {
-        listOf("Posts" to "Threads", "Reels" to "Replies", "Tagged" to "Reposts").forEach { (value, label) ->
+        listOf("Posts" to "Posts", "Reels" to "Reels", "Tagged" to "Tagged").forEach { (value, label) ->
             val active = selected == value
             Column(
                 Modifier.weight(1f).clickable { onSelect(value) }.padding(vertical = 11.dp),
