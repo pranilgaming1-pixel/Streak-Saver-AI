@@ -49,6 +49,7 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
     var profiles by remember { mutableStateOf<Map<String, EzoneProfile>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     val me = EzoneSession.userId
     LaunchedEffect(Unit) {
@@ -79,13 +80,23 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
         }
     }
     Column(Modifier.fillMaxSize().background(MsgBg)) {
-        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Messages", color = MsgText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                Text("Your private conversations", color = MsgMuted, fontSize = 12.sp)
-            }
-            TextButton(onClick = { refresh++ }) { Text("Refresh", color = MsgRed) }
+        Box(Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
+            Text("Messages", color = MsgText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("✎", color = MsgText, fontSize = 21.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).clickable { refresh++ })
         }
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp),
+            singleLine = true,
+            placeholder = { Text("Search messages", color = MsgMuted, fontSize = 12.sp) },
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MsgText, unfocusedTextColor = MsgText,
+                focusedBorderColor = MsgLine, unfocusedBorderColor = MsgLine,
+                cursorColor = MsgText, focusedContainerColor = MsgSurface, unfocusedContainerColor = MsgSurface
+            )
+        )
         HorizontalDivider(color = MsgLine)
         if (loading && messages.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -97,6 +108,7 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
             val latest = messages.groupBy { if (it.sender == me) it.receiver else it.sender }
                 .mapValues { it.value.maxByOrNull { msg -> msg.created } }
                 .entries.sortedByDescending { it.value?.created.orEmpty() }
+                .filter { entry -> searchQuery.isBlank() || (profiles[entry.key]?.displayName.orEmpty() + " " + profiles[entry.key]?.username.orEmpty() + " " + entry.value?.body.orEmpty()).contains(searchQuery, true) }
             if (latest.isEmpty()) {
                 Column(Modifier.fillMaxWidth().padding(34.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Your inbox is quiet", color = MsgText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
