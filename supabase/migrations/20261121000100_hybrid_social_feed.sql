@@ -28,6 +28,7 @@ create table if not exists public.audios (
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+create unique index if not exists audios_audio_url_uidx on public.audios(audio_url);
 
 alter table public.posts
   add column if not exists post_format public.ezone_post_format not null default 'photo',
@@ -57,6 +58,41 @@ update public.posts
 set post_format = case when media_type = 'video' then 'reel'::public.ezone_post_format
                        else 'photo'::public.ezone_post_format end
 where post_format = 'photo' and media_type = 'video';
+
+-- Link legacy music attachments into the normalized audio catalog without removing
+-- the original music_path/music_title/music_artist fields used by current builds.
+insert into public.audios(title, artist_name, audio_url, created_by)
+select distinct
+  coalesce(nullif(btrim(p.music_title), ''), 'Original audio'),
+  coalesce(nullif(btrim(p.music_artist), ''), 'Original audio'),
+  p.music_path,
+  null
+from public.posts p
+where p.music_path is not null and btrim(p.music_path) <> ''
+on conflict (audio_url) do nothing;
+
+update public.posts p
+set audio_id = a.id
+from public.audios a
+where p.audio_id is null and p.music_path = a.audio_url;
+
+-- Existing video uploads from the current Android composer are classified as Reels.
+create or replace function private.ezone_infer_post_format()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if new.media_type = 'video' and new.post_format = 'photo' then
+    new.post_format := 'reel';
+  end if;
+  return new;
+end;
+$;
+drop trigger if exists ezone_infer_post_format on public.posts;
+create trigger ezone_infer_post_format
+  before insert or update of media_type, post_format on public.posts
+  for each row execute function private.ezone_infer_post_format();
 
 -- Ordered media records enable carousels while preserving the current media_path field.
 create table if not exists public.post_media (
