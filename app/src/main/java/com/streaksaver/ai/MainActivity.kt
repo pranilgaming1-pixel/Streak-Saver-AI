@@ -669,6 +669,9 @@ private fun EzoneMainScreen(
                     Box(Modifier.size(38.dp).clickable { tab = "Activity" }, contentAlignment = Alignment.CenterEnd) {
                         Text("♡", color = EzoneWhite, fontSize = 28.sp)
                     }
+                    Box(Modifier.size(38.dp).clickable { messagesOpen = true }, contentAlignment = Alignment.CenterEnd) {
+                        Text("✉", color = EzoneWhite, fontSize = 21.sp)
+                    }
                 } else if (tab == "Profile") {
                     Box(Modifier.size(32.dp).clickable { tab = "Create" }, contentAlignment = Alignment.Center) { Text("▣", color = EzoneWhite, fontSize = 19.sp) }
                     Box(Modifier.size(32.dp).clickable { tab = "Settings" }, contentAlignment = Alignment.Center) { Text("☰", color = EzoneWhite, fontSize = 20.sp) }
@@ -1062,7 +1065,7 @@ private fun EzoneMainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
+            listOf("Home", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item
                 Column(
                     Modifier.weight(1f).heightIn(min = 48.dp)
@@ -1075,7 +1078,7 @@ private fun EzoneMainScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Create" -> "⊞"; "Activity" -> "♡"; else -> "♙" },
+                        when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▷"; "Create" -> "⊞"; "Activity" -> "♡"; else -> "♙" },
                         color = if (selected) EzoneWhite else Color(0xFF8B8B8B),
                         fontSize = if (item == "Create") 25.sp else 24.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
