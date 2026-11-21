@@ -28,10 +28,10 @@ import java.time.Instant
 
 private val MsgBg = Color(0xFF050505)
 private val MsgSurface = Color(0xFF111111)
-private val MsgSurface2 = Color(0xFF1B1B1B)
+private val MsgSurface2 = Color(0xFF202020)
 private val MsgText = Color(0xFFFFFFFF)
 private val MsgMuted = Color(0xFFAAAAAA)
-private val MsgRed = Color(0xFFED233C)
+private val MsgRed = Color(0xFFFFFFFF)
 private val MsgLine = Color(0xFF292929)
 
 private data class EzoneDirectMessage(
@@ -174,7 +174,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp).heightIn(min = 420.dp, max = 720.dp)
-                .clip(RoundedCornerShape(26.dp)).background(MsgBg).padding(16.dp)
+                .clip(RoundedCornerShape(18.dp)).background(MsgBg).padding(16.dp)
                 .navigationBarsPadding()
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
