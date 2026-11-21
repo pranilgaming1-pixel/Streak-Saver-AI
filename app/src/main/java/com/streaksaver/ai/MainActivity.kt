@@ -971,7 +971,12 @@ private fun EzoneMainScreen(
                                 postCount = profilePosts.size,
                                 followerCount = profileFollowerCount,
                                 followingCount = profileFollowingCount,
-                                onInsights = { showProfileInsights = true },
+                                onInsights = {
+                                    val shareText = "Follow " + (profile?.displayName ?: "me") + " on Ezone (@" + (profile?.username ?: "member") + ")"
+                                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareText)
+                                    try { context.startActivity(Intent.createChooser(send, "Share profile")) }
+                                    catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable on this device.", Toast.LENGTH_SHORT).show() }
+                                },
                                 onBlock = { profileActionDialog = "block" },
                                 onReport = { profileActionDialog = "report" }
                             )
