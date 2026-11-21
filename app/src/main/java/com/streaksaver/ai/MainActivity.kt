@@ -639,22 +639,24 @@ private fun EzoneMainScreen(
 
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Row(
-            Modifier.fillMaxWidth().height(58.dp).background(EzoneSurface).padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().height(64.dp).background(EzoneBlack).padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(color = EzoneSurface2, shape = RoundedCornerShape(12.dp), modifier = Modifier.size(36.dp).clickable { if (tab == "Home") tab = "Explore" else tab = "Home" }) {
-                Box(contentAlignment = Alignment.Center) { Text("▦", color = EzoneWhite, fontSize = 19.sp) }
+            Column(Modifier.weight(1f)) {
+                Text("ezone", color = EzoneWhite, fontSize = 27.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.6).sp)
+                Text(when(tab) { "Home" -> "YOUR WORLD, YOUR PEOPLE"; "Profile" -> "YOUR SPACE"; "Reels" -> "PLAY SOMETHING"; "Settings" -> "ACCOUNT & PREFERENCES"; else -> "STAY CONNECTED" },
+                    color = EzoneMuted, fontSize = 8.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.SemiBold)
             }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Text(if (tab == "Profile" && targetProfileId == myId) "Profile" else if (tab == "Create") "New post" else if (tab == "Settings") "Settings" else "EZONE", color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.2.sp)
+            Surface(color = EzoneSurface, shape = CircleShape, modifier = Modifier.size(40.dp).clickable { tab = "Search" }) {
+                Box(contentAlignment = Alignment.Center) { Text("⌕", color = EzoneWhite, fontSize = 25.sp) }
             }
-            Surface(color = if (tab == "Settings") Color(0xFF42101A) else EzoneSurface2, shape = CircleShape,
-                modifier = Modifier.size(36.dp).clickable { tab = "Settings" }) {
-                Box(contentAlignment = Alignment.Center) { Text("⚙", color = EzoneWhite, fontSize = 20.sp) }
+            Spacer(Modifier.width(9.dp))
+            Surface(color = EzoneSurface, shape = CircleShape, modifier = Modifier.size(40.dp).clickable { messagesOpen = true }) {
+                Box(contentAlignment = Alignment.Center) { Text("✉", color = EzoneWhite, fontSize = 19.sp) }
             }
-            Spacer(Modifier.width(8.dp))
-            Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(38.dp).clickable { targetProfileId = myId; tab = "Profile" }) {
-                Box(contentAlignment = Alignment.Center) { Avatar(EzoneSession.email.take(1).uppercase(), 34) }
+            Spacer(Modifier.width(9.dp))
+            Surface(color = EzoneSurface, shape = CircleShape, modifier = Modifier.size(40.dp).clickable { tab = "Settings" }) {
+                Box(contentAlignment = Alignment.Center) { Text("⚙", color = EzoneWhite, fontSize = 19.sp) }
             }
         }
         HorizontalDivider(color = EzoneLine)
@@ -999,26 +1001,38 @@ private fun EzoneMainScreen(
                 }
             }
         }
-        HorizontalDivider(color = EzoneLine)
+        HorizontalDivider(color = Color(0xFF242424))
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFF111111)).padding(horizontal = 8.dp, vertical = 5.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().background(Color(0xFF080808)).padding(horizontal = 4.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             listOf("Home", "Explore", "Reels", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item
-                TextButton(onClick = {
-                    tab = item
-                    if (item == "Profile") targetProfileId = myId
-                }) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(color = if (selected || item == "Create") Color(0xFF42101A) else Color.Transparent, shape = RoundedCornerShape(13.dp)) {
-                            Box(Modifier.size(width = if (item == "Create") 43.dp else 40.dp, height = 38.dp), contentAlignment = Alignment.Center) {
-                                Text(when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▶"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" }, color = if (selected) EzoneWhite else EzoneMuted, fontSize = if (item == "Create") 26.sp else 21.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                        
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(15.dp)).clickable {
+                        tab = item
+                        if (item == "Profile") targetProfileId = myId
+                    }.padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        Modifier.size(if (item == "Create") 39.dp else 34.dp)
+                            .clip(RoundedCornerShape(if (item == "Create") 12.dp else 11.dp))
+                            .background(if (item == "Create") EzoneRed else if (selected) Color(0xFF351017) else Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            when (item) { "Home" -> "⌂"; "Explore" -> "⌕"; "Reels" -> "▶"; "Create" -> "+"; "Activity" -> "♡"; else -> "◉" },
+                            color = if (item == "Create") Color.White else if (selected) Color(0xFFFF687B) else Color(0xFF929292),
+                            fontSize = if (item == "Create") 25.sp else 21.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
+                    Spacer(Modifier.height(3.dp))
+                    Text(item, color = if (selected) EzoneWhite else Color(0xFF858585), fontSize = 9.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                    if (selected) Box(Modifier.padding(top = 3.dp).width(13.dp).height(2.dp).clip(CircleShape).background(EzoneRed))
                 }
             }
         }
