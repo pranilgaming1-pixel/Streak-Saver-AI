@@ -1654,7 +1654,7 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
         if (uri != null) { musicAttachment = uri; musicTitle = queryDisplayName(context, uri).ifBlank { "Selected audio" }; message = "" }
     }
 
-    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(22.dp)).background(EzoneSurface).padding(15.dp)) {
         Row(verticalAlignment = Alignment.Top) {
             Avatar(EzoneSession.email.substringBefore("@").take(1).uppercase().ifBlank { "E" }, 42)
             Spacer(Modifier.width(12.dp))
@@ -1678,11 +1678,11 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                     AsyncImage(
                         model = attachment,
                         contentDescription = "Selected photo",
-                        modifier = Modifier.size(86.dp).clip(RoundedCornerShape(10.dp)),
+                        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(13.dp)),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Box(Modifier.size(86.dp).clip(RoundedCornerShape(10.dp)).background(EzoneSurface2), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(104.dp).clip(RoundedCornerShape(13.dp)).background(EzoneSurface2), contentAlignment = Alignment.Center) {
                         Text("▶ VIDEO", color = EzoneRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -1691,9 +1691,9 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(enabled = !busy, onClick = { photoPicker.launch("image/*") }) { Text("＋ Photo", color = EzoneRed, fontSize = 12.sp) }
-            TextButton(enabled = !busy, onClick = { videoPicker.launch("video/*") }) { Text("＋ Video", color = EzoneRed, fontSize = 12.sp) }
-            TextButton(enabled = !busy, onClick = { audioPicker.launch("audio/*") }) { Text("♫ Music", color = EzoneRed, fontSize = 12.sp) }
+            TextButton(enabled = !busy, onClick = { photoPicker.launch("image/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("▧ Photo", color = EzoneRed, fontSize = 10.sp) }
+            TextButton(enabled = !busy, onClick = { videoPicker.launch("video/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("▶ Video", color = EzoneRed, fontSize = 10.sp) }
+            TextButton(enabled = !busy, onClick = { audioPicker.launch("audio/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("♫ Audio", color = EzoneRed, fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
             Button(
                 enabled = !busy && (draft.trim().isNotEmpty() || attachment != null || musicAttachment != null),
