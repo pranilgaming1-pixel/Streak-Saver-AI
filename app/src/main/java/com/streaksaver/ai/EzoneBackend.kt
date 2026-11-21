@@ -50,7 +50,17 @@ object EzoneSession {
         email = prefs.getString("email", "").orEmpty()
         expiresAt = prefs.getLong("expires_at", 0L)
         recoveryMode = prefs.getBoolean("recovery_mode", false)
-        if (userId.isBlank()) userId = jwtClaims(accessToken).optString("sub")
+        val claims = jwtClaims(accessToken)
+        if (userId.isBlank()) userId = claims.optString("sub")
+        // Older app builds did not persist expires_at. Recover it from the signed JWT
+        // so an existing login can still refresh before the access token expires.
+        if (expiresAt <= 0L) {
+            val jwtExpirySeconds = claims.optLong("exp", 0L)
+            if (jwtExpirySeconds > 0L) {
+                expiresAt = jwtExpirySeconds * 1000L
+                prefs.edit().putLong("expires_at", expiresAt).apply()
+            }
+        }
     }
 
     fun save(context: Context, access: String, refresh: String, user: String, mail: String, expiresInSeconds: Long) {
