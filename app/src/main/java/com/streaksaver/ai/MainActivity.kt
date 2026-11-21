@@ -509,35 +509,15 @@ private fun EzoneMainScreen(
                 }
             }
             "Explore" -> {
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
-                    item {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Explore", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                                Surface(color = EzoneSurface2, shape = CircleShape, modifier = Modifier.size(38.dp).clickable { tab = "Search" }) {
-                                    Box(contentAlignment = Alignment.Center) { Text("⌕", color = EzoneWhite, fontSize = 23.sp) }
-                                }
-                            }
-                            Text("Discover what the Ezone community is sharing.", color = EzoneMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 12.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("For you", "Trending", "Recent").forEachIndexed { index, filter ->
-                                    Surface(color = if (index == 0) Color(0xFF292929) else EzoneSurface, shape = RoundedCornerShape(18.dp)) {
-                                        Text(filter, color = if (index == 0) EzoneWhite else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp))
-                                    }
-                                }
-                            }
-                        }
-                        HorizontalDivider(color = EzoneLine)
-                    }
-                    if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
-                    if (explorePosts.isEmpty() && !loading) item { EmptyState("Your Explore is waiting", "When members share photos and videos, they will appear here.") }
-                    items(explorePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "explore-empty" }) { rowPosts ->
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            rowPosts.forEach { post -> ProfilePostTile(context, post, Modifier.weight(1f)) }
-                            repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                    }
-                    if (pageError.isNotBlank()) item { ErrorLine(pageError) }
+                loading = true
+                EzoneBackend.request(
+                    context, "GET",
+                    "/rest/v1/posts?select=id,user_id,body,media_path,media_type,music_path,music_title,music_artist,created_at,profiles:profiles!posts_user_id_profiles_fkey(id,username,display_name,bio,avatar_url),post_likes(user_id)&order=created_at.desc&limit=60",
+                    token
+                ) { result ->
+                    loading = false
+                    if (result.ok) explorePosts = EzoneBackend.parsePosts(result.body)
+                    else pageError = EzoneBackend.errorMessage(result, "Could not load Explore.")
                 }
             }
             "Reels" -> {
