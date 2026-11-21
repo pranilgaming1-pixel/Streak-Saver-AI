@@ -57,11 +57,12 @@ The Home screen includes a Stories rail and the app navigation is simplified to 
 
 ## Hybrid short-video and carousel foundation
 
-The existing Android/Kotlin app is being extended in place; this repository is not being replaced with a separate Expo application. The additive Phase 1 migration is:
+The existing Android/Kotlin app is being extended in place; this repository is not being replaced with a separate Expo application. The additive Phase 1 migrations are:
 
-`supabase/migrations/20261121000100_hybrid_social_feed.sql`
+- `supabase/migrations/20261121000100_hybrid_social_feed.sql`
+- `supabase/migrations/20261121000200_ezone_index_policy_tuning.sql`
 
 It extends the current `profiles`, `posts`, `post_likes`, `comments`, `follows`, `stories`, `story_views`, `direct_messages`, `post_reposts`, and hashtag structures. It adds ordered post media for carousels, an audio catalog, view/completion tracking, aggregate counters, comment reactions/replies, group conversations, and the `get_for_you_feed` RPC.
 
-For an already-running Ezone database, apply the new migration after the existing schema. Do not drop or recreate the current tables, and do not replace the existing Auth implementation. The same additive SQL is included at the end of `supabase/schema.sql` and `supabase/EZONE_SETUP.sql` for fresh setup paths. Typing and online presence are ephemeral Realtime features and are not stored as permanent message rows.
+For an already-running Ezone database, apply the new migration after the existing schema. Do not drop or recreate the current tables, and do not replace the existing Auth implementation. The both additive migrations are included at the end of `supabase/schema.sql` and `supabase/EZONE_SETUP.sql` for fresh setup paths. Typing and online presence are ephemeral Realtime features and are not stored as permanent message rows.
 
