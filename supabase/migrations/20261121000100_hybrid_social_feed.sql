@@ -7,7 +7,7 @@ begin;
 
 create schema if not exists private;
 
-do $
+do $$
 begin
   create type public.ezone_post_format as enum ('reel', 'photo', 'carousel');
 exception when duplicate_object then null;
@@ -83,14 +83,14 @@ create or replace function private.ezone_infer_post_format()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 begin
   if new.media_type = 'video' and new.post_format = 'photo' then
     new.post_format := 'reel';
   end if;
   return new;
 end;
-$;
+$$;
 drop trigger if exists ezone_infer_post_format on public.posts;
 revoke all on function private.ezone_infer_post_format() from public, anon, authenticated;
 create trigger ezone_infer_post_format
@@ -621,7 +621,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   if tg_op = 'INSERT' then
     update public.posts set shares_count = shares_count + 1 where id = new.post_id;
@@ -630,7 +630,7 @@ begin
   update public.posts set shares_count = greatest(shares_count - 1, 0) where id = old.post_id;
   return old;
 end;
-$;
+$$;
 revoke all on function private.ezone_update_repost_share_counts() from public, anon, authenticated;
 drop trigger if exists ezone_repost_share_count on public.post_reposts;
 create trigger ezone_repost_share_count
