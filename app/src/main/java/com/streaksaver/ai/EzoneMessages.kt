@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -169,44 +171,84 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
             } else error = EzoneBackend.errorMessage(response, "Could not load this chat.")
         }
     }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MsgSurface,
-        title = {
-            Column {
-                Text(otherUserName, color = MsgText, fontWeight = FontWeight.Bold)
-                Text("Private Ezone chat", color = MsgMuted, fontSize = 11.sp)
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp).heightIn(min = 420.dp, max = 720.dp)
+                .clip(RoundedCornerShape(26.dp)).background(MsgBg).padding(16.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(MsgSurface2), contentAlignment = Alignment.Center) {
+                    Text(otherUserName.take(1).uppercase(), color = MsgRed, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(11.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(otherUserName, color = MsgText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Private Ezone chat", color = MsgMuted, fontSize = 11.sp)
+                }
+                TextButton(onClick = onDismiss) { Text("✕", color = MsgMuted, fontSize = 18.sp) }
             }
-        },
-        text = {
-            Column(Modifier.fillMaxWidth()) {
-                if (loading && messages.isEmpty()) Text("Loading messages…", color = MsgMuted)
-                val chatScroll = rememberScrollState()
-                LaunchedEffect(messages.size) { chatScroll.animateScrollTo(chatScroll.maxValue) }
-                Column(Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 330.dp).verticalScroll(chatScroll)) {
-                    messages.forEach { msg ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (msg.sender == me) Arrangement.End else Arrangement.Start) {
-                            Box(Modifier.padding(vertical = 4.dp).widthIn(max = 240.dp)
-                                .clip(RoundedCornerShape(17.dp))
-                                .background(if (msg.sender == me) MsgRed else MsgSurface2)
-                                .padding(horizontal = 13.dp, vertical = 9.dp)) {
-                                Text(msg.body, color = if (msg.sender == me) Color(0xFF061018) else MsgText, fontSize = 13.sp)
-                            }
+            HorizontalDivider(Modifier.padding(top = 12.dp), color = MsgLine)
+            val chatScroll = rememberScrollState()
+            LaunchedEffect(messages.size) { chatScroll.animateScrollTo(chatScroll.maxValue) }
+            Column(
+                Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp).verticalScroll(chatScroll),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                if (loading && messages.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(28.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MsgRed, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
+                if (messages.isEmpty() && !loading) {
+                    Column(Modifier.fillMaxWidth().padding(vertical = 45.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("👋", fontSize = 32.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Start the conversation", color = MsgText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Send a message to say hello.", color = MsgMuted, fontSize = 11.sp)
+                    }
+                }
+                messages.forEach { msg ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (msg.sender == me) Arrangement.End else Arrangement.Start) {
+                        Column(
+                            Modifier.widthIn(max = 270.dp).clip(
+                                RoundedCornerShape(
+                                    topStart = 18.dp, topEnd = 18.dp,
+                                    bottomStart = if (msg.sender == me) 18.dp else 5.dp,
+                                    bottomEnd = if (msg.sender == me) 5.dp else 18.dp
+                                )
+                            ).background(if (msg.sender == me) MsgRed else MsgSurface2)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Text(msg.body, color = if (msg.sender == me) Color.White else MsgText, fontSize = 13.sp, lineHeight = 18.sp)
+                            Text(msg.created.substringAfter("T").take(5), color = if (msg.sender == me) Color(0xFFFFD9DE) else MsgMuted, fontSize = 9.sp,
+                                modifier = Modifier.align(Alignment.End).padding(top = 3.dp))
                         }
                     }
-                    if (messages.isEmpty() && !loading) Text("Say hello to start chatting.", color = MsgMuted, fontSize = 12.sp)
                 }
-                if (error.isNotBlank()) Text(error, color = Color(0xFFFF9D9D), fontSize = 11.sp)
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = draft, onValueChange = { draft = it.take(2000) },
-                        modifier = Modifier.weight(1f), placeholder = { Text("Message…", color = MsgMuted) },
-                        maxLines = 3, colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = MsgText, unfocusedTextColor = MsgText,
-                            focusedBorderColor = MsgRed, unfocusedBorderColor = MsgLine,
-                            focusedContainerColor = MsgBg, unfocusedContainerColor = MsgBg
-                        ))
-                    Spacer(Modifier.width(6.dp))
-                    Button(enabled = draft.trim().isNotEmpty() && !sending, onClick = {
+            }
+            if (error.isNotBlank()) Text(error, color = Color(0xFFFF9D9D), fontSize = 11.sp, modifier = Modifier.padding(bottom = 6.dp))
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(25.dp)).background(MsgSurface).padding(start = 14.dp, end = 5.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = draft, onValueChange = { draft = it.take(2000) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Message…", color = MsgMuted, fontSize = 13.sp) },
+                    maxLines = 4,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MsgText, unfocusedTextColor = MsgText,
+                        focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
+                        cursorColor = MsgRed
+                    )
+                )
+                Spacer(Modifier.width(6.dp))
+                Button(
+                    enabled = draft.trim().isNotEmpty() && !sending,
+                    onClick = {
                         sending = true
                         val text = draft.trim()
                         val payload = JSONObject().put("sender_id", me).put("receiver_id", otherUserId).put("body", text)
@@ -215,12 +257,12 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
                             if (response.ok) { draft = ""; refresh++ }
                             else error = EzoneBackend.errorMessage(response, "Message could not be sent.")
                         }
-                    }, colors = ButtonDefaults.buttonColors(containerColor = MsgRed, contentColor = Color(0xFF061018))) {
-                        Text(if (sending) "…" else "Send")
-                    }
-                }
+                    },
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 17.dp, vertical = 11.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MsgRed, contentColor = Color.White)
+                ) { Text(if (sending) "…" else "➤", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done", color = MsgRed) } }
-    )
+        }
+    }
 }
