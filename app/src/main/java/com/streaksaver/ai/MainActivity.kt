@@ -38,6 +38,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -707,10 +709,28 @@ private fun EzoneMainScreen(
                     if (loading && feedPosts.isEmpty()) {
                         item { LoadingLine("Loading your feed…") }
                     } else if (feedPosts.isEmpty()) {
-                        item { EmptyState(
-                            if (feedMode == "Following") "Your circle is quiet" else "Your Ezone starts here",
-                            if (feedMode == "Following") "Follow people to see their posts here." else "Be the first to share something. Your feed contains real Ezone members, not demo profiles."
-                        ) }
+                        item {
+                            Column(
+                                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                EmptyState(
+                                    if (feedMode == "Following") "Your circle is quiet" else "Your Ezone starts here",
+                                    if (feedMode == "Following") "Follow people to see their posts here." else "Be the first to share something. Your feed contains real Ezone members, not demo profiles."
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = { tab = if (feedMode == "Following") "Explore" else "Create" },
+                                    colors = ButtonDefaults.buttonColors(containerColor = EzoneWhite, contentColor = EzoneBlack),
+                                    shape = RoundedCornerShape(24.dp)
+                                ) {
+                                    Text(
+                                        if (feedMode == "Following") "Find people" else "Create your first post",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         items(feedPosts, key = { it.id }) { post ->
                             PostCard(
@@ -1045,10 +1065,12 @@ private fun EzoneMainScreen(
             listOf("Home", "Explore", "Create", "Activity", "Profile").forEach { item ->
                 val selected = tab == item
                 Column(
-                    Modifier.weight(1f).height(38.dp).clickable {
-                        tab = item
-                        if (item == "Profile") targetProfileId = myId
-                    },
+                    Modifier.weight(1f).heightIn(min = 48.dp)
+                        .semantics { contentDescription = "$item tab" }
+                        .clickable {
+                            tab = item
+                            if (item == "Profile") targetProfileId = myId
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
