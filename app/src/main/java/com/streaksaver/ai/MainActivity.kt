@@ -1188,17 +1188,17 @@ private fun EzoneSettingsScreen(
                 Text("›", color = EzoneWhite, fontSize = 22.sp)
             }
             Spacer(Modifier.height(12.dp))
-            SettingsSection("ACCOUNT")
+            SettingsSection("Account")
             SettingsAction("Edit profile", "Name, username, bio and profile photo", "›", onEditProfile)
             SettingsAction("Change password", "Update your account password", "›", { passwordDialog = true })
             SettingsAction("Sign out", "Log out of this device", "↗", onSignOut, danger = true)
-            SettingsSection("YOUR FEED")
+            SettingsSection("Your feed")
             SettingsChoice("Default feed", "Choose which posts open first", listOf("For you", "Following"), defaultFeed, onDefaultFeed)
-            SettingsSection("VIDEO & DATA")
+            SettingsSection("Data usage")
             SettingsToggle("Autoplay Reels", "Play visible short videos automatically", autoplayReels, onAutoplayReels)
             SettingsToggle("Autoplay feed videos", "Start videos while scrolling your feed", autoplayFeedVideos, onAutoplayFeedVideos)
             SettingsToggle("Data saver", "Disable automatic video playback to reduce data use", dataSaver, onDataSaver)
-            SettingsSection("PRIVACY & SAFETY")
+            SettingsSection("Privacy")
             SettingsToggle("Private account", "Only approved followers can see your posts and Stories.", isPrivateAccount, onPrivateAccountChange)
             SettingsAction("Follow requests", "Review people asking to follow you", "›", onFollowRequests)
             SettingsAction("Blocked accounts", "Review or unblock accounts", "›", onBlockedUsers)
@@ -1208,7 +1208,7 @@ private fun EzoneSettingsScreen(
             SettingsToggle("New followers", "Notify me when someone follows me", notifyFollows) { onNotificationPreferenceChange("follows", it) }
             SettingsToggle("Messages", "Notify me about new direct messages", notifyMessages) { onNotificationPreferenceChange("messages", it) }
             SettingsInfo("Push notifications", "These preferences control in-app activity records. Push delivery still needs notification credentials and device registration.")
-            SettingsSection("ABOUT")
+            SettingsSection("About Ezone")
             SettingsInfo("Ezone", "A social space for photos, videos, short-form clips and conversations.")
             SettingsInfo("Connection", "Connected to your configured Ezone backend. Never share your account password or private server keys.")
             Spacer(Modifier.height(26.dp))
@@ -1335,7 +1335,7 @@ private fun FollowRequestsDialog(context: Context, onDismiss: () -> Unit, onChan
 @Composable
 private fun SettingsSection(title: String) {
     Row(Modifier.fillMaxWidth().padding(top = 17.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp)
+        Text(title.lowercase().replaceFirstChar { it.uppercase() }, color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(10.dp))
         HorizontalDivider(color = EzoneLine)
     }
@@ -1343,10 +1343,16 @@ private fun SettingsSection(title: String) {
 
 @Composable
 private fun SettingsAction(title: String, subtitle: String, trailing: String, onClick: () -> Unit, danger: Boolean = false) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EzoneSurface).clickable(onClick = onClick).padding(horizontal = 13.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(when(title) { "Account" -> "♙"; "Privacy" -> "♧"; "Notifications" -> "♧"; "Appearance" -> "◐"; "Data usage" -> "⌁"; "Help" -> "?"; "About Ezone" -> "ⓘ"; else -> "♙" }, color = EzoneWhite, fontSize = 17.sp, modifier = Modifier.width(34.dp))
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EzoneSurface).clickable(onClick = onClick).padding(horizontal = 13.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(when(title) {
+            "Edit profile" -> "♙"; "Change password" -> "▣"; "Sign out" -> "↗"
+            "Follow requests" -> "♧"; "Blocked accounts" -> "⊘"; "Saved posts" -> "▤"
+            "Account" -> "♙"; "Privacy" -> "♧"; "Notifications" -> "♧"
+            "Appearance" -> "◐"; "Data usage" -> "⌁"; "Help" -> "?"; "About Ezone" -> "ⓘ"
+            else -> "♙"
+        }, color = EzoneWhite, fontSize = 18.sp, modifier = Modifier.width(36.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (danger) EzoneWhite else EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
         }
         Text(trailing, color = EzoneMuted, fontSize = 20.sp)
@@ -1360,7 +1366,7 @@ private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, on
             Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = EzoneMuted, fontSize = 10.sp, lineHeight = 14.sp)
         }
-        Switch(checked = checked, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = EzoneRed))
+        Switch(checked = checked, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF050505), checkedTrackColor = Color.White))
     }
 }
 
