@@ -1930,8 +1930,9 @@ private fun likePost(context: Context, token: String, userId: String, post: Ezon
         "/rest/v1/post_likes?post_id=eq." + post.id + "&user_id=eq." + userId
     } else "/rest/v1/post_likes"
     val body = if (liked) null else JSONObject().put("post_id", post.id).put("user_id", userId)
-    EzoneBackend.request(context, if (liked) "DELETE" else "POST", path, token, body, if (body == null) null else "return=minimal") {
-        done()
+    EzoneBackend.request(context, if (liked) "DELETE" else "POST", path, token, body, if (body == null) null else "return=minimal") { result ->
+        if (result.ok) done()
+        else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not update your like."), Toast.LENGTH_LONG).show()
     }
 }
 
