@@ -18,6 +18,8 @@ import okio.BufferedSink
 import okio.source
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URL
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -186,43 +188,79 @@ object EzoneBackend {
     fun upload(context: Context, uri: Uri, remotePath: String, token: String, callback: (ApiResponse) -> Unit) {
         val appContext = context.applicationContext
         executor.execute {
+            var stagedFile: File? = null
             val response = try {
                 val base = projectUrl(appContext)
                 val key = publishableKey(appContext)
                 if (!base.startsWith("https://") || key.isBlank()) {
                     ApiResponse(false, 0, "Supabase URL or publishable key is missing.")
                 } else {
-                    val size = try {
-                        appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+                    val maxBytes = 104857600L
+                    var contentLength = try {
+                        appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                            if (descriptor.length >= 0L) descriptor.length else descriptor.parcelFileDescriptor.statSize
+                        } ?: -1L
                     } catch (_: Exception) { -1L }
-                    if (size > 104857600L) {
+
+                    if (contentLength > maxBytes) {
                         ApiResponse(false, 413, "Choose a photo, video or audio file smaller than 100 MB.")
                     } else {
-                    val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
-                    val encodedPath = Uri.encode(remotePath, "/")
-                    val streamingBody = object : RequestBody() {
-                        override fun contentType() = mime.toMediaTypeOrNull()
-                        override fun contentLength(): Long = size
-                        override fun writeTo(sink: BufferedSink) {
+                        // Some cloud document providers report an unknown size (-1). Stage only
+                        // those files so OkHttp can send a real Content-Length to Supabase Storage.
+                        if (contentLength < 0L) {
+                            stagedFile = File.createTempFile("ezone-upload-", ".tmp", appContext.cacheDir)
                             val input = appContext.contentResolver.openInputStream(uri)
                                 ?: throw IllegalStateException("Could not read the selected media.")
-                            input.use { stream -> stream.source().use { source -> sink.writeAll(source) } }
+                            var copied = 0L
+                            input.use { source ->
+                                FileOutputStream(stagedFile!!).use { output ->
+                                    val buffer = ByteArray(8192)
+                                    while (true) {
+                                        val count = source.read(buffer)
+                                        if (count < 0) break
+                                        copied += count
+                                        if (copied > maxBytes) {
+                                            throw IllegalStateException("Choose a photo, video or audio file smaller than 100 MB.")
+                                        }
+                                        output.write(buffer, 0, count)
+                                    }
+                                }
+                            }
+                            contentLength = copied
                         }
-                    }
-                    val request = Request.Builder()
-                        .url(base + "/storage/v1/object/" + MEDIA_BUCKET + "/" + encodedPath)
-                        .header("apikey", key)
-                        .header("Authorization", "Bearer " + token)
-                        .header("x-upsert", "false")
-                        .post(streamingBody)
-                        .build()
-                    client.newCall(request).execute().use { result ->
-                        ApiResponse(result.isSuccessful, result.code, result.body?.string().orEmpty())
-                    }
+                        if (contentLength <= 0L) {
+                            ApiResponse(false, 400, "The selected media file is empty or its size could not be determined.")
+                        } else {
+                            val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
+                            val encodedPath = Uri.encode(remotePath, "/")
+                            val uploadSize = contentLength
+                            val streamingBody = object : RequestBody() {
+                                override fun contentType() = mime.toMediaTypeOrNull()
+                                override fun contentLength(): Long = uploadSize
+                                override fun writeTo(sink: BufferedSink) {
+                                    val input = stagedFile?.inputStream()
+                                        ?: appContext.contentResolver.openInputStream(uri)
+                                        ?: throw IllegalStateException("Could not read the selected media.")
+                                    input.use { stream -> stream.source().use { source -> sink.writeAll(source) } }
+                                }
+                            }
+                            val request = Request.Builder()
+                                .url(base + "/storage/v1/object/" + MEDIA_BUCKET + "/" + encodedPath)
+                                .header("apikey", key)
+                                .header("Authorization", "Bearer " + token)
+                                .header("x-upsert", "false")
+                                .post(streamingBody)
+                                .build()
+                            client.newCall(request).execute().use { result ->
+                                ApiResponse(result.isSuccessful, result.code, result.body?.string().orEmpty())
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
                 ApiResponse(false, 0, e.localizedMessage ?: "Media upload failed.")
+            } finally {
+                stagedFile?.delete()
             }
             main.post { callback(response) }
         }
