@@ -82,7 +82,7 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit, onNew
     Column(Modifier.fillMaxSize().background(MsgBg)) {
         Box(Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
             Text("Messages", color = MsgText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("✎", color = MsgText, fontSize = 21.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).clickable { onNewMessage() }.semantics { contentDescription = "Start a new message" })
+            Text("✎", color = MsgText, fontSize = 21.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).clickable { onNewMessage() })
         }
         OutlinedTextField(
             value = searchQuery,
