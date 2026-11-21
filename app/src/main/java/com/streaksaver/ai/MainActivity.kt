@@ -50,6 +50,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.delay
 
 private val EzoneBlack = Color(0xFF050505)
 private val EzoneSurface = Color(0xFF111111)
@@ -120,9 +121,17 @@ private fun EzoneApp(context: Context) {
                 AuthScreen(context)
             } else {
                 LaunchedEffect(EzoneSession.accessToken, EzoneSession.expiresAt) {
-                    if (EzoneSession.isExpiringSoon()) {
-                        EzoneBackend.refreshSession(context) { ok, message ->
-                            sessionNotice = if (ok) "" else message
+                    val tokenAtStart = EzoneSession.accessToken
+                    if (tokenAtStart.isNotBlank() && EzoneSession.expiresAt > 0L) {
+                        // Wait until two minutes before expiry instead of checking only once
+                        // when the screen is first composed.
+                        val waitMillis = (EzoneSession.expiresAt - System.currentTimeMillis() - 120_000L)
+                            .coerceAtLeast(0L)
+                        if (waitMillis > 0L) delay(waitMillis)
+                        if (EzoneSession.accessToken == tokenAtStart && EzoneSession.isExpiringSoon()) {
+                            EzoneBackend.refreshSession(context) { ok, message ->
+                                sessionNotice = if (ok) "" else message
+                            }
                         }
                     }
                 }
