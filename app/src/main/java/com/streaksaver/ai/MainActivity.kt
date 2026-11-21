@@ -1955,47 +1955,61 @@ private fun ProfileHeader(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneRed }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)).background(EzoneSurface).padding(horizontal = 20.dp, vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(88.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(accentColor, Color(0xFFFF5268), accentColor))).padding(3.dp).clip(CircleShape).background(EzoneSurface2).padding(3.dp)) {
-            Avatar(profile.displayName.take(1).uppercase(), 76, profile.avatarUrl)
+    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 17.dp, vertical = 17.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(94.dp).clip(CircleShape)
+                    .background(Brush.sweepGradient(listOf(accentColor, Color(0xFFFF8290), accentColor)))
+                    .padding(3.dp).clip(CircleShape).background(EzoneBlack).padding(3.dp)
+            ) { Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl) }
+            Spacer(Modifier.width(18.dp))
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween) {
+                ProfileStat(postCount.toString(), "POSTS")
+                ProfileStat(followerCount.toString(), "FOLLOWERS")
+                ProfileStat(followingCount.toString(), "FOLLOWING")
+            }
         }
-        Spacer(Modifier.height(9.dp))
-        Text(profile.displayName, color = EzoneWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        if (profile.website.isNotBlank()) {
-            Text(profile.website, color = accentColor, fontSize = 11.sp, modifier = Modifier.clickable {
-                val link = if (profile.website.startsWith("http://") || profile.website.startsWith("https://")) profile.website else "https://" + profile.website
-                try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
-                catch (_: Exception) { Toast.makeText(context, "No app can open this link.", Toast.LENGTH_SHORT).show() }
-            })
-        } else Text("@${profile.username}", color = EzoneMuted, fontSize = 11.sp)
-        if (profile.bio.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(profile.bio, color = EzoneWhite, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 17.sp)
+        Spacer(Modifier.height(15.dp))
+        Text(profile.displayName, color = EzoneWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("@${profile.username}", color = EzoneMuted, fontSize = 12.sp)
+        if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+        if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (profile.location.isNotBlank()) {
+                Text("⌖  ${profile.location}", color = EzoneMuted, fontSize = 11.sp)
+                if (profile.website.isNotBlank()) Spacer(Modifier.width(12.dp))
+            }
+            if (profile.website.isNotBlank()) {
+                Text("↗  ${profile.website}", color = accentColor, fontSize = 11.sp, maxLines = 1,
+                    modifier = Modifier.clickable {
+                        val link = if (profile.website.startsWith("http://") || profile.website.startsWith("https://")) profile.website else "https://" + profile.website
+                        try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
+                        catch (_: Exception) { Toast.makeText(context, "No app can open this link.", Toast.LENGTH_SHORT).show() }
+                    })
+            }
         }
-        if (profile.pronouns.isNotBlank() || profile.location.isNotBlank() || profile.website.isNotBlank()) {
-            Spacer(Modifier.height(7.dp))
-            Text(listOf(profile.pronouns, profile.location, profile.website).filter { it.isNotBlank() }.joinToString("  ·  "), color = EzoneMuted, fontSize = 10.sp, textAlign = TextAlign.Center)
-        }
-        Spacer(Modifier.height(17.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            ProfileStat(postCount.toString(), "POSTS")
-            ProfileStat(followerCount.toString(), "FOLLOWERS")
-            ProfileStat(followingCount.toString(), "FOLLOWING")
-        }
-        Spacer(Modifier.height(17.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Spacer(Modifier.height(15.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (isOwn) {
-                Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)) { Text("Edit profile", fontWeight = FontWeight.Bold) }
-                OutlinedButton(onClick = onInsights, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Insights", color = EzoneWhite) }
+                Button(onClick = onEdit, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = EzoneSurface2, contentColor = EzoneWhite)) {
+                    Text("Edit profile", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(onClick = onInsights, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
+                    border = BorderStroke(1.dp, EzoneLine)) { Text("Insights", color = EzoneWhite, fontSize = 12.sp) }
             } else {
-                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) { Text(if (isFollowing) "Following" else if (isFollowPending) "Requested" else "Follow", color = EzoneWhite) }
-                OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite) }
+                Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) {
+                    Text(if (isFollowing) "Following" else if (isFollowPending) "Requested" else "Follow", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(onClick = onMessage, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
+                    border = BorderStroke(1.dp, EzoneLine)) { Text("Message", color = EzoneWhite, fontSize = 12.sp) }
             }
         }
         if (!isOwn) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = onBlock) { Text("Block", color = EzoneMuted, fontSize = 11.sp) }
-                TextButton(onClick = onReport) { Text("Report", color = EzoneRed, fontSize = 11.sp) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onBlock, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Block", color = EzoneMuted, fontSize = 10.sp) }
+                TextButton(onClick = onReport, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Report", color = EzoneRed, fontSize = 10.sp) }
             }
         }
     }
