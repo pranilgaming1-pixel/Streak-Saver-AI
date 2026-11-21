@@ -264,7 +264,7 @@ private fun AuthScreen(context: Context) {
                 }
                 if (message.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
-                    Text(message, color = if (message.contains("created", true) || message.contains("confirm", true)) Color(0xFF9DE4B8) else Color(0xFFFFA0A0), fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Text(message, color = if (message.contains("created", true) || message.contains("confirm", true)) Color(0xFF9DE4B8) else Color(0xFFBDBDBD), fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
                 if (mode == "login") {
                     TextButton(enabled = !busy, onClick = {
@@ -310,7 +310,7 @@ private fun AuthScreen(context: Context) {
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = EzoneWhite),
-                    border = BorderStroke(1.dp, Color(0xFF6B252E))
+                    border = BorderStroke(1.dp, Color(0xFF303030))
                 ) {
                     Text("G", color = EzoneRed, fontWeight = FontWeight.Black, fontSize = 18.sp)
                     Spacer(Modifier.width(10.dp))
@@ -376,7 +376,7 @@ private fun PrimaryAction(label: String, disabled: Boolean, onClick: () -> Unit)
         colors = ButtonDefaults.buttonColors(
             containerColor = EzoneRed,
             contentColor = Color(0xFF061018),
-            disabledContainerColor = Color(0xFF6B252E)
+            disabledContainerColor = Color(0xFF303030)
         )
     ) {
         Text(label, fontWeight = FontWeight.Bold)
@@ -659,8 +659,8 @@ private fun EzoneMainScreen(
         }
         HorizontalDivider(color = EzoneLine)
         if (sessionNotice.isNotBlank()) {
-            Row(Modifier.fillMaxWidth().background(Color(0xFF31251B)).padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(sessionNotice, color = Color(0xFFFFD9B0), fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth().background(Color(0xFF202020)).padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(sessionNotice, color = Color(0xFFEAEAEA), fontSize = 11.sp, modifier = Modifier.weight(1f))
                 TextButton(onClick = onDismissNotice) { Text("OK", color = EzoneRed) }
             }
         }
@@ -1373,7 +1373,7 @@ private fun SettingsChoice(title: String, subtitle: String, options: List<String
         Spacer(Modifier.height(9.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EzoneSurface2).padding(3.dp)) {
             options.forEach { option ->
-                Box(Modifier.weight(1f).clip(RoundedCornerShape(9.dp)).background(if (selected == option) Color(0xFF42101A) else Color.Transparent)
+                Box(Modifier.weight(1f).clip(RoundedCornerShape(9.dp)).background(if (selected == option) Color(0xFF303030) else Color.Transparent)
                     .clickable { onChange(option) }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
                     Text(option, color = if (selected == option) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (selected == option) FontWeight.Bold else FontWeight.Normal)
                 }
@@ -1449,7 +1449,7 @@ private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> 
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(62.dp).clickable {
                     onOpenStory(story)
                 }) {
-                    Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneRed, Color(0xFF8C1828)))).padding(3.dp)) {
+                    Box(Modifier.size(58.dp).clip(CircleShape).background(Brush.linearGradient(listOf(EzoneRed, Color(0xFF383838)))).padding(3.dp)) {
                         Box(Modifier.fillMaxSize().clip(CircleShape).background(EzoneBlack), contentAlignment = Alignment.Center) { Avatar(username.take(1).uppercase(), 48, owner?.optString("avatar_url")) }
                     }
                     Spacer(Modifier.height(5.dp))
@@ -1615,7 +1615,7 @@ private fun ReelCard(context: Context, post: EzonePost, myId: String, autoPlay: 
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 TextButton(onClick = onLike, contentPadding = PaddingValues(2.dp)) {
-                    Text(if (liked) "♥" else "♡", color = if (liked) Color(0xFFFF536B) else Color.White, fontSize = 29.sp)
+                    Text(if (liked) "♥" else "♡", color = if (liked) Color(0xFFFFFFFF) else Color.White, fontSize = 29.sp)
                 }
                 Text(post.likedBy.size.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
@@ -1702,7 +1702,7 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                         Text("▶ VIDEO", color = EzoneRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                TextButton(onClick = { attachment = null }) { Text("Remove", color = Color(0xFFFF9D9D), fontSize = 11.sp) }
+                TextButton(onClick = { attachment = null }) { Text("Remove", color = Color(0xFFBDBDBD), fontSize = 11.sp) }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -1760,13 +1760,13 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EzoneRed, contentColor = Color(0xFF061018), disabledContainerColor = Color(0xFF292020)),
+                colors = ButtonDefaults.buttonColors(containerColor = EzoneRed, contentColor = Color(0xFF061018), disabledContainerColor = Color(0xFF242424)),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 7.dp)
             ) {
                 Text(if (busy) "Posting…" else "Post", fontWeight = FontWeight.Bold)
             }
         }
-        if (message.isNotBlank()) Text(message, color = Color(0xFFFFA0A0), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        if (message.isNotBlank()) Text(message, color = Color(0xFFBDBDBD), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -1804,7 +1804,7 @@ private fun PostCard(
 
     Column(Modifier.fillMaxWidth().padding(vertical = 5.dp).background(EzoneBlack).padding(horizontal = 14.dp, vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFF5268), EzoneRed))).padding(2.dp)) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFFFFFF), EzoneRed))).padding(2.dp)) {
                 Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 38, author?.avatarUrl)
             }
             Spacer(Modifier.width(10.dp))
@@ -1841,13 +1841,13 @@ private fun PostCard(
             }
         }
         if (!post.musicPath.isNullOrBlank()) {
-            Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1B0B0E))
+            Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF202020))
                 .clickable {
                     val audioUrl = EzoneBackend.mediaUrl(context, post.musicPath)
                     try { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(audioUrl), "audio/*")) }
                     catch (_: Exception) { Toast.makeText(context, "No audio player found.", Toast.LENGTH_SHORT).show() }
                 }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)).background(Color(0xFF1A4052)), contentAlignment = Alignment.Center) { Text("♫", color = EzoneRed, fontSize = 20.sp) }
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(9.dp)).background(Color(0xFF252525)), contentAlignment = Alignment.Center) { Text("♫", color = EzoneRed, fontSize = 20.sp) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) { Text(post.musicTitle ?: "Audio track", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold); Text(post.musicArtist ?: "Ezone audio", color = EzoneMuted, fontSize = 10.sp) }
                 Text("▶", color = EzoneRed, fontSize = 17.sp)
@@ -1856,7 +1856,7 @@ private fun PostCard(
         Spacer(Modifier.height(5.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onLike, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
-                Text((if (liked) "♥" else "♡") + "  " + post.likedBy.size, color = if (liked) Color(0xFFFF8DAA) else EzoneWhite, fontSize = 16.sp)
+                Text((if (liked) "♥" else "♡") + "  " + post.likedBy.size, color = if (liked) Color(0xFFFFFFFF) else EzoneWhite, fontSize = 16.sp)
             }
             TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("▢  Comment", color = EzoneWhite, fontSize = 11.sp) }
             TextButton(enabled = !actionBusy, onClick = {
@@ -1993,7 +1993,7 @@ private fun CommentsDialog(
                     }
                 }
                 OutlinedTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp), placeholder = { Text("Write a comment…", color = EzoneMuted) }, colors = darkFieldColors())
-                if (message.isNotBlank()) Text(message, color = Color(0xFFFFA0A0), fontSize = 11.sp)
+                if (message.isNotBlank()) Text(message, color = Color(0xFFBDBDBD), fontSize = 11.sp)
             }
         },
         confirmButton = {
@@ -2198,7 +2198,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
                     }
                 }
                 Text("Your photo, name, username and profile details are visible to other Ezone members.", color = EzoneMuted, fontSize = 10.sp)
-                if (message.isNotBlank()) Text(message, color = Color(0xFFFF9D9D), fontSize = 11.sp)
+                if (message.isNotBlank()) Text(message, color = Color(0xFFBDBDBD), fontSize = 11.sp)
             }
         },
         confirmButton = {
@@ -2246,7 +2246,7 @@ private fun ChangePasswordDialog(context: Context, onDismiss: () -> Unit) {
             Column {
                 AuthField(password, { password = it }, "New password", secret = true)
                 AuthField(confirm, { confirm = it }, "Confirm password", secret = true)
-                if (message.isNotBlank()) Text(message, color = Color(0xFFFF9D9D), fontSize = 11.sp)
+                if (message.isNotBlank()) Text(message, color = Color(0xFFBDBDBD), fontSize = 11.sp)
             }
         },
         confirmButton = {
@@ -2274,7 +2274,7 @@ private fun ChangePasswordDialog(context: Context, onDismiss: () -> Unit) {
 
 @Composable
 private fun Avatar(letter: String, size: Int, imageUrl: String? = null) {
-    Box(Modifier.size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF42101A), Color(0xFF1B0B0E)))), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFF303030), Color(0xFF202020)))), contentAlignment = Alignment.Center) {
         if (!imageUrl.isNullOrBlank()) AsyncImage(model = imageUrl, contentDescription = "Profile photo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Text(letter.ifBlank { "E" }, color = EzoneRed, fontSize = (size / 2.2f).sp, fontWeight = FontWeight.Bold)
     }
@@ -2303,7 +2303,7 @@ private fun LoadingLine(message: String) {
 
 @Composable
 private fun ErrorLine(message: String) {
-    Text(message, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(16.dp))
+    Text(message, color = Color(0xFFBDBDBD), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(16.dp))
 }
 
 @Composable
@@ -2311,7 +2311,7 @@ private fun darkFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = EzoneWhite,
     unfocusedTextColor = EzoneWhite,
     focusedBorderColor = EzoneRed,
-    unfocusedBorderColor = Color(0xFF553039),
+    unfocusedBorderColor = Color(0xFF454545),
     focusedContainerColor = EzoneSurface,
     unfocusedContainerColor = EzoneSurface,
     cursorColor = EzoneRed
