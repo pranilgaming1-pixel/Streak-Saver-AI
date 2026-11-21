@@ -1727,7 +1727,7 @@ private fun PostCard(
         }
     }
 
-    Column(Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 7.dp).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp).background(EzoneBlack).padding(horizontal = 14.dp, vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFF5268), EzoneRed))).padding(2.dp)) {
                 Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 38, author?.avatarUrl)
@@ -1751,14 +1751,14 @@ private fun PostCard(
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = "Post photo",
-                    modifier = Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp)),
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.92f).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 EzoneVideoPlayer(
                     context = context,
                     url = mediaUrl,
-                    modifier = Modifier.fillMaxWidth().height(232.dp).clip(RoundedCornerShape(13.dp)),
+                    modifier = Modifier.fillMaxWidth().height(330.dp).clip(RoundedCornerShape(8.dp)),
                     loop = false,
                     showController = true,
                     autoPlay = autoplayFeedVideos && !dataSaver
@@ -1783,7 +1783,7 @@ private fun PostCard(
             TextButton(onClick = onLike, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
                 Text((if (liked) "♥" else "♡") + "  " + post.likedBy.size, color = if (liked) Color(0xFFFF8DAA) else EzoneWhite, fontSize = 16.sp)
             }
-            TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("▢", color = EzoneWhite, fontSize = 17.sp) }
+            TextButton(onClick = onComments, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("▢  Comment", color = EzoneWhite, fontSize = 11.sp) }
             TextButton(enabled = !actionBusy, onClick = {
                 actionBusy = true
                 val method = if (saved) "DELETE" else "POST"
@@ -1797,7 +1797,7 @@ private fun PostCard(
                     } else Toast.makeText(context, EzoneBackend.errorMessage(result, "Could not update saved posts."), Toast.LENGTH_LONG).show()
                 }
             }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
-                Text(if (saved) "▣" else "▢", color = if (saved) EzoneRed else EzoneWhite, fontSize = 16.sp)
+                Text(if (saved) "▣  Saved" else "▢  Save", color = if (saved) EzoneRed else EzoneWhite, fontSize = 11.sp)
             }
             TextButton(enabled = !actionBusy, onClick = {
                 actionBusy = true
@@ -1816,7 +1816,7 @@ private fun PostCard(
                     }
                 }
             }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) {
-                Text(if (reposted) "↻✓" else "↻", color = if (reposted) EzoneRed else EzoneWhite, fontSize = 16.sp)
+                Text(if (reposted) "↻  Reposted" else "↻  Repost", color = if (reposted) EzoneRed else EzoneWhite, fontSize = 11.sp)
             }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = {
@@ -1830,7 +1830,7 @@ private fun PostCard(
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareText)
                 try { context.startActivity(Intent.createChooser(send, "Share post")) }
                 catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable on this device.", Toast.LENGTH_SHORT).show() }
-            }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("➤", color = EzoneWhite, fontSize = 17.sp) }
+            }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 1.dp)) { Text("↗", color = EzoneWhite, fontSize = 18.sp) }
             TextButton(onClick = { reportOpen = true }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 1.dp)) { Text("⋯", color = EzoneMuted, fontSize = 19.sp) }
         }
     }
