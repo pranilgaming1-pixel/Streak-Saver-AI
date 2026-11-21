@@ -2189,7 +2189,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
     var website by remember(profile.id) { mutableStateOf(profile.website) }
     var location by remember(profile.id) { mutableStateOf(profile.location) }
     var pronouns by remember(profile.id) { mutableStateOf(profile.pronouns) }
-    var accent by remember(profile.id) { mutableStateOf(profile.accentColor.ifBlank { #FFFFFF }) }
+    var accent by remember(profile.id) { mutableStateOf(profile.accentColor.ifBlank { "#FFFFFF" }) }
     var avatarUri by remember(profile.id) { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
@@ -2213,7 +2213,7 @@ private fun EditProfileDialog(profile: EzoneProfile, context: Context, onDismiss
                 Spacer(Modifier.height(8.dp))
                 Text("Profile accent", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    listOf("#ED233C", #777777, #BBBBBB, "#FFFFFF", "#777777").forEach { colorHex ->
+                    listOf("#FFFFFF", "#777777", "#BBBBBB", "#FFFFFF", "#777777").forEach { colorHex ->
                         val swatch = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { EzoneRed }
                         Box(Modifier.size(32.dp).clip(CircleShape).background(swatch).clickable { accent = colorHex }, contentAlignment = Alignment.Center) { if (accent == colorHex) Text("✓", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
