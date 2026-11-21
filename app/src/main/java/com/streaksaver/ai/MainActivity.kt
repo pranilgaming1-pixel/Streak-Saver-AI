@@ -1089,7 +1089,11 @@ private fun EzoneMainScreen(
     if (followRequestsOpen) FollowRequestsDialog(context, onDismiss = { followRequestsOpen = false }, onChanged = { reloadKey++ })
     if (blockedUsersOpen) BlockedUsersDialog(context, onDismiss = { blockedUsersOpen = false })
     if (messagesOpen) {
-        MessagesScreen(context, onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false })
+        MessagesScreen(
+            context,
+            onOpenChat = { id, name -> chatUserId = id; chatUserName = name; messagesOpen = false },
+            onNewMessage = { messagesOpen = false; searchText = ""; tab = "Search" }
+        )
     }
     if (chatUserId.isNotBlank()) {
         DirectChatDialog(context, chatUserId, chatUserName, onDismiss = { chatUserId = "" })
