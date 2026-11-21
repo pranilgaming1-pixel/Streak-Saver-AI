@@ -575,10 +575,26 @@ drop trigger if exists ezone_group_message_share_count on public.conversation_me
 create trigger ezone_group_message_share_count
   after insert or update of shared_post_id or delete on public.conversation_messages
   for each row execute function private.ezone_update_share_counts();
+create or replace function private.ezone_update_repost_share_counts()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if tg_op = 'INSERT' then
+    update public.posts set shares_count = shares_count + 1 where id = new.post_id;
+    return new;
+  end if;
+  update public.posts set shares_count = greatest(shares_count - 1, 0) where id = old.post_id;
+  return old;
+end;
+$;
+revoke all on function private.ezone_update_repost_share_counts() from public, anon, authenticated;
 drop trigger if exists ezone_repost_share_count on public.post_reposts;
 create trigger ezone_repost_share_count
   after insert or delete on public.post_reposts
-  for each row execute function private.ezone_update_share_counts();
+  for each row execute function private.ezone_update_repost_share_counts();
 
 -- Backfill counters from existing rows without changing or deleting user content.
 update public.posts p set
@@ -594,6 +610,9 @@ update public.profiles pr set
   followers_count = (select count(*) from public.follows f where f.following_id = pr.id),
   following_count = (select count(*) from public.follows f where f.follower_id = pr.id),
   posts_count = (select count(*) from public.posts p where p.user_id = pr.id);
+
+update public.audios a set
+  usage_count = (select count(*) from public.posts p where p.audio_id = a.id);
 
 update public.stories s set
   views_count = (select count(*) from public.story_views sv where sv.story_id = s.id);
