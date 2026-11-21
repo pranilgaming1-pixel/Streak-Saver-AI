@@ -712,8 +712,8 @@ private fun EzoneMainScreen(
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
-                            Text("Create a post", color = EzoneWhite, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                            Text("Share a moment with your Ezone community.", color = EzoneMuted, fontSize = 12.sp)
+                            Text("New thread", color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                            Text("Share your world", color = EzoneMuted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                         }
                         HorizontalDivider(color = EzoneLine)
                         PostComposer(context, onPosted = { tab = "Home"; reloadKey++ })
@@ -1680,7 +1680,7 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
                     value = draft,
                     onValueChange = { draft = it },
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                    placeholder = { Text("What's happening?", color = EzoneMuted) },
+                    placeholder = { Text("What's on your mind?", color = EzoneMuted) },
                     minLines = 2,
                     maxLines = 6,
                     colors = darkFieldColors()
@@ -1707,9 +1707,9 @@ private fun PostComposer(context: Context, onPosted: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(enabled = !busy, onClick = { photoPicker.launch("image/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("▧ Photo", color = EzoneRed, fontSize = 10.sp) }
-            TextButton(enabled = !busy, onClick = { videoPicker.launch("video/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("▶ Video", color = EzoneRed, fontSize = 10.sp) }
-            TextButton(enabled = !busy, onClick = { audioPicker.launch("audio/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("♫ Audio", color = EzoneRed, fontSize = 10.sp) }
+            TextButton(enabled = !busy, onClick = { photoPicker.launch("image/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("▧", color = EzoneWhite, fontSize = 19.sp) }
+            TextButton(enabled = !busy, onClick = { videoPicker.launch("video/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("GIF", color = EzoneWhite, fontSize = 12.sp) }
+            TextButton(enabled = !busy, onClick = { audioPicker.launch("audio/*") }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text("♫", color = EzoneWhite, fontSize = 19.sp) }
             Spacer(Modifier.weight(1f))
             Button(
                 enabled = !busy && (draft.trim().isNotEmpty() || attachment != null || musicAttachment != null),
@@ -2033,20 +2033,18 @@ private fun ProfileHeader(
     val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneRed }
     Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 17.dp, vertical = 17.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(94.dp).clip(CircleShape)
-                    .background(Brush.sweepGradient(listOf(accentColor, Color(0xFFBDBDBD), accentColor)))
-                    .padding(3.dp).clip(CircleShape).background(EzoneBlack).padding(3.dp)
-            ) { Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl) }
-            Spacer(Modifier.width(18.dp))
+            Box(Modifier.size(82.dp).clip(CircleShape).background(EzoneSurface2)) {
+                Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl)
+            }
+            Spacer(Modifier.width(20.dp))
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween) {
-                ProfileStat(postCount.toString(), "POSTS")
-                ProfileStat(followerCount.toString(), "FOLLOWERS")
-                ProfileStat(followingCount.toString(), "FOLLOWING")
+                ProfileStat(postCount.toString(), "Threads")
+                ProfileStat(followerCount.toString(), "Followers")
+                ProfileStat(followingCount.toString(), "Following")
             }
         }
         Spacer(Modifier.height(15.dp))
-        Text(profile.displayName, color = EzoneWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(profile.displayName, color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Text("@${profile.username}", color = EzoneMuted, fontSize = 12.sp)
         if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
         if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp))
@@ -2072,7 +2070,7 @@ private fun ProfileHeader(
                     Text("Edit profile", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 OutlinedButton(onClick = onInsights, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
-                    border = BorderStroke(1.dp, EzoneLine)) { Text("Insights", color = EzoneWhite, fontSize = 12.sp) }
+                    border = BorderStroke(1.dp, EzoneLine)) { Text("Share profile", color = EzoneWhite, fontSize = 12.sp) }
             } else {
                 Button(onClick = onFollow, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(11.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) EzoneSurface2 else accentColor)) {
@@ -2116,21 +2114,16 @@ private fun ProfileStat(value: String, label: String) {
 @Composable
 private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 10.dp, vertical = 5.dp)) {
-        listOf("Posts", "Reels", "Tagged").forEach { label ->
-            val active = selected == label
+        listOf("Posts" to "Threads", "Reels" to "Replies", "Tagged" to "Reposts").forEach { (value, label) ->
+            val active = selected == value
             Column(
-                Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                    .clickable { onSelect(label) }.padding(vertical = 9.dp),
+                Modifier.weight(1f).clickable { onSelect(value) }.padding(vertical = 11.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(when(label) { "Posts" -> "▦"; "Reels" -> "▶"; else -> "♧" },
-                    color = if (active) EzoneWhite else EzoneMuted, fontSize = 19.sp)
-                Spacer(Modifier.height(4.dp))
-                Text(label, color = if (active) EzoneWhite else EzoneMuted, fontSize = 10.sp,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
-                Spacer(Modifier.height(5.dp))
-                Box(Modifier.fillMaxWidth(0.35f).height(2.dp).clip(CircleShape)
-                    .background(if (active) EzoneRed else Color.Transparent))
+                Text(label, color = if (active) EzoneWhite else EzoneMuted, fontSize = 11.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                Spacer(Modifier.height(9.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(if (active) EzoneWhite else Color.Transparent))
             }
         }
     }
