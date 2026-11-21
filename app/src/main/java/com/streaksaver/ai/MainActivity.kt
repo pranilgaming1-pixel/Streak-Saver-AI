@@ -646,15 +646,26 @@ private fun EzoneMainScreen(
             Modifier.fillMaxWidth().height(58.dp).background(EzoneBlack).padding(horizontal = 17.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(34.dp).clickable { tab = "Home" }, contentAlignment = Alignment.CenterStart) {
-                Text("ℇ", color = EzoneWhite, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            Box(Modifier.size(34.dp).clickable { if (tab == "Home") tab = "Home" else { tab = "Home"; targetProfileId = myId } }, contentAlignment = Alignment.CenterStart) {
+                Text(if (tab == "Home") "ℇ" else "‹", color = EzoneWhite, fontSize = if (tab == "Home") 30.sp else 34.sp, fontWeight = FontWeight.Normal)
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Text(if (tab == "Home") "EZONE" else when(tab) { "Explore" -> "Explore"; "Profile" -> "Profile"; "Activity" -> "Activity"; "Search" -> "Search"; "Settings" -> "Settings"; else -> tab },
-                    color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp)
+                Text(when(tab) { "Home" -> "EZONE"; "Profile" -> profile?.displayName ?: "Profile"; "Create" -> "New thread"; "Activity" -> "Activity"; "Explore" -> "Explore"; "Search" -> "Search"; "Settings" -> "Settings"; else -> tab },
+                    color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
             }
-            Box(Modifier.size(38.dp).clickable { tab = "Activity" }, contentAlignment = Alignment.CenterEnd) {
-                Text("♡", color = EzoneWhite, fontSize = 28.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (tab == "Home") {
+                    Box(Modifier.size(38.dp).clickable { tab = "Activity" }, contentAlignment = Alignment.CenterEnd) {
+                        Text("♡", color = EzoneWhite, fontSize = 28.sp)
+                    }
+                } else if (tab == "Profile") {
+                    Box(Modifier.size(32.dp).clickable { tab = "Create" }, contentAlignment = Alignment.Center) { Text("▧", color = EzoneWhite, fontSize = 20.sp) }
+                    Box(Modifier.size(32.dp).clickable { tab = "Settings" }, contentAlignment = Alignment.Center) { Text("☰", color = EzoneWhite, fontSize = 20.sp) }
+                } else if (tab == "Explore") {
+                    Box(Modifier.size(38.dp).clickable { tab = "Search" }, contentAlignment = Alignment.CenterEnd) { Text("⌕", color = EzoneWhite, fontSize = 25.sp) }
+                } else if (tab == "Messages") {
+                    Box(Modifier.size(38.dp).clickable { reloadKey++ }, contentAlignment = Alignment.CenterEnd) { Text("✎", color = EzoneWhite, fontSize = 20.sp) }
+                }
             }
         }
         HorizontalDivider(color = EzoneLine)
@@ -711,11 +722,7 @@ private fun EzoneMainScreen(
             "Create" -> {
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp)) {
                     item {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
-                            Text("New thread", color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                            Text("Share your world", color = EzoneMuted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                        }
-                        HorizontalDivider(color = EzoneLine)
+                        Spacer(Modifier.height(8.dp))
                         PostComposer(context, onPosted = { tab = "Home"; reloadKey++ })
                     }
                 }
@@ -724,11 +731,7 @@ private fun EzoneMainScreen(
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     item {
                         Column(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 7.dp)) {
-                            Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
-                                Text("Explore", color = EzoneWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                Text("⌕", color = EzoneWhite, fontSize = 25.sp, modifier = Modifier.align(Alignment.CenterEnd).clickable { tab = "Search" })
-                            }
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(2.dp))
                             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                                 listOf("For you", "Trending", "Recent").forEach { filter ->
                                     Column(Modifier.weight(1f).clickable { exploreFilter = filter }.padding(top = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -897,9 +900,6 @@ private fun EzoneMainScreen(
             }
             "Activity" -> {
                 Column(Modifier.weight(1f)) {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                        Text("Activity", color = EzoneWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                         listOf("All", "Mentions", "Replies", "Verified").forEach { filter ->
                             Column(Modifier.weight(1f).clickable { activityFilter = filter }.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1176,8 +1176,7 @@ private fun EzoneSettingsScreen(
     var passwordDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text("Settings", color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(2.dp))
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(EzoneSurface).clickable(onClick = onEditProfile).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(EzoneSession.email.substringBefore("@").take(1).uppercase().ifBlank { "E" }, 48)
                 Spacer(Modifier.width(12.dp))
