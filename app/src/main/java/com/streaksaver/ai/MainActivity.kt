@@ -1179,15 +1179,23 @@ private fun EzoneSettingsScreen(
     onSignOut: () -> Unit
 ) {
     var passwordDialog by remember { mutableStateOf(false) }
+    var ownProfile by remember { mutableStateOf<EzoneProfile?>(null) }
+    LaunchedEffect(Unit) {
+        EzoneBackend.request(context, "GET",
+            "/rest/v1/profiles?select=id,username,display_name,bio,avatar_url,website,location,pronouns,accent_color,is_private&id=eq." + EzoneSession.userId + "&limit=1",
+            EzoneSession.accessToken) { result ->
+            if (result.ok) ownProfile = EzoneBackend.parseProfiles(result.body).firstOrNull()
+        }
+    }
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
             Spacer(Modifier.height(2.dp))
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(EzoneSurface).clickable(onClick = onEditProfile).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Avatar(EzoneSession.email.substringBefore("@").take(1).uppercase().ifBlank { "E" }, 48)
+                Avatar(ownProfile?.displayName?.take(1)?.uppercase() ?: EzoneSession.email.substringBefore("@").take(1).uppercase().ifBlank { "E" }, 52, ownProfile?.avatarUrl)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(EzoneSession.email.substringBefore("@").ifBlank { "Ezone member" }, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text(EzoneSession.email, color = EzoneMuted, fontSize = 10.sp)
+                    Text(ownProfile?.displayName?.ifBlank { "Ezone member" } ?: EzoneSession.email.substringBefore("@"), color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("@${ownProfile?.username ?: EzoneSession.email.substringBefore("@")}", color = EzoneMuted, fontSize = 10.sp)
                     Text("View profile", color = EzoneMuted, fontSize = 10.sp)
                 }
                 Text("›", color = EzoneWhite, fontSize = 22.sp)
@@ -2145,7 +2153,7 @@ private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
 @Composable
 private fun ProfilePostTile(context: Context, post: EzonePost, modifier: Modifier = Modifier, pinned: Boolean = false, canPin: Boolean = false, onPin: () -> Unit = {}) {
     val media = post.mediaPath
-    Box(modifier.aspectRatio(0.82f).clip(RoundedCornerShape(10.dp)).background(EzoneSurface2).clickable {
+    Box(modifier.aspectRatio(0.82f).clip(RoundedCornerShape(0.dp)).background(EzoneSurface2).clickable {
         if (!media.isNullOrBlank()) {
             val url = EzoneBackend.mediaUrl(context, media)
             val mime = if (post.mediaType == "video") "video/*" else "image/*"
