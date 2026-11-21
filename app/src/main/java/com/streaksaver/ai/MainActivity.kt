@@ -1547,27 +1547,80 @@ private fun EzoneVideoPlayer(context: Context, url: String, modifier: Modifier =
 @Composable
 private fun ReelCard(context: Context, post: EzonePost, myId: String, autoPlay: Boolean, onLike: () -> Unit, onComments: () -> Unit, onProfile: (String) -> Unit) {
     val author = post.author
-    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(bottom = 14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 40, author?.avatarUrl)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(author?.displayName ?: "Ezone member", color = EzoneWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.clickable { author?.id?.let(onProfile) })
-                Text("@${author?.username ?: "member"}", color = EzoneMuted, fontSize = 10.sp)
-            }
-            Text("REEL", color = EzoneRed, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-        }
+    val liked = myId in post.likedBy
+    Box(Modifier.fillMaxWidth().height(620.dp).background(Color.Black)) {
         if (!post.mediaPath.isNullOrBlank()) {
-            EzoneVideoPlayer(context, EzoneBackend.mediaUrl(context, post.mediaPath), Modifier.fillMaxWidth().height(570.dp), loop = true, showController = true, autoPlay = autoPlay)
+            EzoneVideoPlayer(
+                context, EzoneBackend.mediaUrl(context, post.mediaPath),
+                Modifier.fillMaxSize(), loop = true, showController = true, autoPlay = autoPlay
+            )
         } else {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { Text("This Reel has no video attached.", color = EzoneMuted) }
+            Box(Modifier.fillMaxSize().background(EzoneSurface2), contentAlignment = Alignment.Center) {
+                Text("This Reel has no video attached.", color = EzoneMuted, fontSize = 13.sp)
+            }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onLike) { Text((if (myId in post.likedBy) "♥" else "♡") + " " + post.likedBy.size, color = if (myId in post.likedBy) EzoneRed else EzoneWhite, fontSize = 18.sp) }
-            TextButton(onClick = onComments) { Text("Comment", color = EzoneWhite, fontSize = 12.sp) }
+        Box(Modifier.fillMaxWidth().height(180.dp).align(Alignment.BottomCenter)
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))))
+        Row(
+            Modifier.align(Alignment.TopStart).fillMaxWidth().padding(horizontal = 15.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("REELS", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black, letterSpacing = 1.7.sp,
+                modifier = Modifier.weight(1f))
+            Text("● LIVE FEED", color = Color.White.copy(alpha = 0.8f), fontSize = 9.sp, letterSpacing = 1.sp)
         }
-        if (post.body.isNotBlank()) Text(post.body, Modifier.padding(horizontal = 18.dp), color = EzoneWhite, fontSize = 13.sp)
-        HorizontalDivider(color = EzoneLine, modifier = Modifier.padding(top = 12.dp))
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth(0.78f).padding(start = 16.dp, end = 10.dp, bottom = 22.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { author?.id?.let(onProfile) }) {
+                Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 38, author?.avatarUrl)
+                Spacer(Modifier.width(9.dp))
+                Column {
+                    Text(author?.displayName ?: "Ezone member", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("@${author?.username ?: "member"}", color = Color.White.copy(alpha = 0.78f), fontSize = 10.sp)
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("Follow", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0x55FFFFFF)).clickable { author?.id?.let(onProfile) }.padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+            if (post.body.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(post.body, color = Color.White, fontSize = 13.sp, lineHeight = 18.sp, maxLines = 3)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("♫  Original audio · Ezone", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+        }
+        Column(
+            Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 27.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                TextButton(onClick = onLike, contentPadding = PaddingValues(2.dp)) {
+                    Text(if (liked) "♥" else "♡", color = if (liked) Color(0xFFFF536B) else Color.White, fontSize = 29.sp)
+                }
+                Text(post.likedBy.size.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                TextButton(onClick = onComments, contentPadding = PaddingValues(2.dp)) { Text("◯", color = Color.White, fontSize = 26.sp) }
+                Text("Comment", color = Color.White, fontSize = 9.sp)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                TextButton(onClick = {
+                    val text = buildString {
+                        append(post.body)
+                        if (!post.mediaPath.isNullOrBlank()) {
+                            if (isNotBlank()) append("\n")
+                            append(EzoneBackend.mediaUrl(context, post.mediaPath))
+                        }
+                    }.ifBlank { "Watch this Ezone Reel" }
+                    try {
+                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share Reel"))
+                    } catch (_: Exception) { Toast.makeText(context, "Sharing is unavailable.", Toast.LENGTH_SHORT).show() }
+                }, contentPadding = PaddingValues(2.dp)) { Text("↗", color = Color.White, fontSize = 26.sp) }
+                Text("Share", color = Color.White, fontSize = 9.sp)
+            }
+        }
     }
 }
 
