@@ -2030,21 +2030,25 @@ private fun ProfileHeader(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accentColor = try { Color(android.graphics.Color.parseColor(profile.accentColor)) } catch (_: Exception) { EzoneRed }
-    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 17.dp, vertical = 17.dp)) {
+    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 17.dp, vertical = 15.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(82.dp).clip(CircleShape).background(EzoneSurface2)) {
                 Avatar(profile.displayName.take(1).uppercase(), 82, profile.avatarUrl)
             }
-            Spacer(Modifier.width(20.dp))
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween) {
-                ProfileStat(postCount.toString(), "Threads")
-                ProfileStat(followerCount.toString(), "Followers")
-                ProfileStat(followingCount.toString(), "Following")
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f)) {
+                Text(profile.displayName, color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("@${profile.username}", color = EzoneMuted, fontSize = 12.sp)
+                if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp)
             }
         }
-        Spacer(Modifier.height(15.dp))
-        Text(profile.displayName, color = EzoneWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text("@${profile.username}", color = EzoneMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            ProfileStat(postCount.toString(), "Threads")
+            ProfileStat(followerCount.toString(), "Followers")
+            ProfileStat(followingCount.toString(), "Following")
+        }
+        Spacer(Modifier.height(14.dp))
         if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
         if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp))
         Row(Modifier.fillMaxWidth().padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
