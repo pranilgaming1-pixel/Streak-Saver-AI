@@ -43,13 +43,15 @@ alter table public.posts
   drop constraint if exists posts_likes_count_nonnegative,
   drop constraint if exists posts_comments_count_nonnegative,
   drop constraint if exists posts_shares_count_nonnegative,
-  drop constraint if exists posts_views_count_nonnegative;
+  drop constraint if exists posts_views_count_nonnegative,
+  drop constraint if exists posts_completion_rate_check;
 
 alter table public.posts
   add constraint posts_likes_count_nonnegative check (likes_count >= 0),
   add constraint posts_comments_count_nonnegative check (comments_count >= 0),
   add constraint posts_shares_count_nonnegative check (shares_count >= 0),
-  add constraint posts_views_count_nonnegative check (views_count >= 0);
+  add constraint posts_views_count_nonnegative check (views_count >= 0),
+  add constraint posts_completion_rate_check check (completion_rate between 0 and 1);
 
 update public.posts
 set post_format = case when media_type = 'video' then 'reel'::public.ezone_post_format
@@ -604,7 +606,11 @@ update public.posts p set
     (select count(*) from public.post_reposts r where r.post_id = p.id)
     + (select count(*) from public.direct_messages dm where dm.shared_post_id = p.id)
     + (select count(*) from public.conversation_messages cm where cm.shared_post_id = p.id),
-  views_count = coalesce((select sum(pv.view_count) from public.post_views pv where pv.post_id = p.id), 0);
+  views_count = coalesce((select sum(pv.view_count) from public.post_views pv where pv.post_id = p.id), 0),
+  completion_rate = coalesce((
+    select sum(pv.completed_count)::numeric / nullif(sum(pv.view_count), 0)
+    from public.post_views pv where pv.post_id = p.id
+  ), 0);
 
 update public.profiles pr set
   followers_count = (select count(*) from public.follows f where f.following_id = pr.id),
@@ -735,13 +741,24 @@ $$;
 
 -- Explicit grants: RLS remains the row-level authorization boundary.
 grant select on public.audios, public.post_media, public.comment_likes to authenticated;
-grant insert, update, delete on public.audios to authenticated;
+grant insert, delete on public.audios to authenticated;
+revoke update on public.audios from authenticated;
+grant update(title, artist_name, audio_url, duration, cover_image_url)
+  on public.audios to authenticated;
 grant insert, update, delete on public.post_media to authenticated;
 grant insert, delete on public.comment_likes to authenticated;
 grant select, insert, update on public.post_views to authenticated;
 grant select on public.user_hashtag_engagement to authenticated;
 grant select, insert, update on public.conversations, public.conversation_participants to authenticated;
 grant select, insert, delete on public.conversation_messages to authenticated;
+-- Counter columns are maintained by database triggers, not client writes.
+revoke update on public.profiles from authenticated;
+grant update(username, display_name, bio, avatar_url, is_private, website, location, pronouns, accent_color)
+  on public.profiles to authenticated;
+revoke update on public.posts from authenticated;
+grant update(body, media_path, media_type, music_path, music_title, music_artist, post_format, location, audio_id)
+  on public.posts to authenticated;
+
 grant execute on function public.ezone_record_post_view(uuid, boolean) to authenticated;
 grant execute on function public.get_for_you_feed(uuid, integer, integer) to authenticated;
 
