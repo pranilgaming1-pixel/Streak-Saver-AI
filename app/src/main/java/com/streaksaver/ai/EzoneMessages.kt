@@ -118,24 +118,38 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit, onNew
                 LazyColumn {
                     items(latest, key = { it.key }) { entry ->
                         val person = profiles[entry.key]
+                        val unreadCount = messages.count {
+                            it.sender == entry.key && it.receiver == me && it.seenAt.isBlank()
+                        }
                         Row(Modifier.fillMaxWidth().clickable {
                             onOpenChat(entry.key, person?.displayName ?: "Ezone member")
                         }.padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(48.dp).clip(CircleShape).background(MsgSurface2), contentAlignment = Alignment.Center) {
-                                Text(person?.displayName?.take(1)?.uppercase() ?: "E", color = MsgRed, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                Box(Modifier.size(48.dp).clip(CircleShape).background(MsgSurface2), contentAlignment = Alignment.Center) {
+                                    Text(person?.displayName?.take(1)?.uppercase() ?: "E", color = MsgText, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                                }
+                                if (unreadCount > 0) {
+                                    Badge(Modifier.align(Alignment.TopEnd)) {
+                                        Text(if (unreadCount > 99) "99+" else unreadCount.toString(), fontSize = 9.sp)
+                                    }
+                                }
                             }
                             Spacer(Modifier.width(13.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(person?.displayName ?: "Ezone member", color = MsgText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Text(
-                                    if (entry.value?.sender == me && entry.value?.seenAt?.isNotBlank() == true)
-                                        "Seen · " + entry.value?.body.orEmpty()
-                                    else entry.value?.body.orEmpty(),
-                                    color = if (entry.value?.sender == me && entry.value?.seenAt?.isNotBlank() == true) MsgRed else MsgMuted,
+                                    (if (entry.value?.sender == me) "You: " else "") + entry.value?.body.orEmpty(),
+                                    color = if (unreadCount > 0) MsgText else MsgMuted,
+                                    fontWeight = if (unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
                                     fontSize = 12.sp, maxLines = 1
                                 )
                             }
-                            Text(entry.value?.created?.substringAfter("T")?.take(5).orEmpty(), color = MsgMuted, fontSize = 10.sp)
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(entry.value?.created?.substringAfter("T")?.take(5).orEmpty(), color = MsgMuted, fontSize = 10.sp)
+                                if (entry.value?.sender == me && entry.value?.seenAt?.isNotBlank() == true) {
+                                    Text("Seen", color = MsgMuted, fontSize = 9.sp)
+                                }
+                            }
                         }
                         HorizontalDivider(color = MsgLine)
                     }
