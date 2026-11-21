@@ -411,6 +411,8 @@ private fun EzoneMainScreen(
     var feedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var savedPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var explorePosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
+    var exploreFilter by remember { mutableStateOf("For you") }
+    var activityFilter by remember { mutableStateOf("All") }
     var reelPosts by remember { mutableStateOf<List<EzonePost>>(emptyList()) }
     var searchText by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<EzoneProfile>>(emptyList()) }
@@ -651,12 +653,8 @@ private fun EzoneMainScreen(
                 Text(if (tab == "Home") "EZONE" else when(tab) { "Explore" -> "Explore"; "Profile" -> "Profile"; "Activity" -> "Activity"; "Search" -> "Search"; "Settings" -> "Settings"; else -> tab },
                     color = EzoneWhite, fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp)
             }
-            Box(Modifier.size(34.dp).clickable { tab = "Activity" }, contentAlignment = Alignment.Center) {
-                Text("♡", color = EzoneWhite, fontSize = 27.sp)
-            }
-            Spacer(Modifier.width(7.dp))
-            Box(Modifier.size(34.dp).clickable { messagesOpen = true }, contentAlignment = Alignment.Center) {
-                Text("✉", color = EzoneWhite, fontSize = 20.sp)
+            Box(Modifier.size(38.dp).clickable { tab = "Activity" }, contentAlignment = Alignment.CenterEnd) {
+                Text("♡", color = EzoneWhite, fontSize = 28.sp)
             }
         }
         HorizontalDivider(color = EzoneLine)
@@ -725,14 +723,18 @@ private fun EzoneMainScreen(
             "Explore" -> {
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
                     item {
-                        Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                            Text("Explore", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
-                            Text("Discover photos and videos shared by Ezone members.", color = EzoneMuted, fontSize = 12.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("For you", "Reels").forEach { filter ->
-                                    Surface(color = if (filter == "For you") Color(0xFF202020) else EzoneSurface2, shape = RoundedCornerShape(20.dp), modifier = Modifier.clickable { if (filter == "Reels") tab = "Reels" }) {
-                                        Text(filter, color = if (filter == "For you") EzoneRed else EzoneMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
+                        Column(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 7.dp)) {
+                            Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
+                                Text("Explore", color = EzoneWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("⌕", color = EzoneWhite, fontSize = 25.sp, modifier = Modifier.align(Alignment.CenterEnd).clickable { tab = "Search" })
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                listOf("For you", "Trending", "Recent").forEach { filter ->
+                                    Column(Modifier.weight(1f).clickable { exploreFilter = filter }.padding(top = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(filter, color = if (exploreFilter == filter) EzoneWhite else EzoneMuted, fontSize = 12.sp, fontWeight = if (exploreFilter == filter) FontWeight.Bold else FontWeight.Normal)
+                                        Spacer(Modifier.height(9.dp))
+                                        Box(Modifier.fillMaxWidth().height(1.dp).background(if (exploreFilter == filter) EzoneWhite else Color.Transparent))
                                     }
                                 }
                             }
@@ -740,7 +742,7 @@ private fun EzoneMainScreen(
                     }
                     if (loading && explorePosts.isEmpty()) item { LoadingLine("Finding something new…") }
                     if (explorePosts.isEmpty() && !loading) item { EmptyState("Your Explore is waiting", "When members share photos and videos, they will appear here.") }
-                    items(explorePosts.chunked(3), key = { row -> row.firstOrNull()?.id ?: "explore-empty" }) { rowPosts ->
+                    items((if (exploreFilter == "Trending") explorePosts.sortedByDescending { it.likedBy.size } else if (exploreFilter == "Recent") explorePosts.sortedByDescending { it.createdAt } else explorePosts).chunked(3), key = { row -> row.firstOrNull()?.id ?: "explore-empty" }) { rowPosts ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 1.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             rowPosts.forEach { post -> ProfilePostTile(context, post, Modifier.weight(1f)) }
                             repeat(3 - rowPosts.size) { Spacer(Modifier.weight(1f)) }
@@ -778,7 +780,7 @@ private fun EzoneMainScreen(
                             onValueChange = { searchText = it },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            placeholder = { Text("Search by username", color = EzoneMuted) },
+                            placeholder = { Text("Search Ezone", color = EzoneMuted) },
                             colors = darkFieldColors()
                         )
                         Spacer(Modifier.width(8.dp))
