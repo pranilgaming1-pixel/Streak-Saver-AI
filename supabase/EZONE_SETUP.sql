@@ -913,7 +913,7 @@ select distinct
   coalesce(nullif(btrim(p.music_title), ''), 'Original audio'),
   coalesce(nullif(btrim(p.music_artist), ''), 'Original audio'),
   p.music_path,
-  null
+  null::uuid
 from public.posts p
 where p.music_path is not null and btrim(p.music_path) <> ''
 on conflict (audio_url) do nothing;
