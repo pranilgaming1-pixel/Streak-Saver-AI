@@ -668,14 +668,18 @@ private fun EzoneMainScreen(
         }
         when (tab) {
             "Home" -> {
-                Row(Modifier.fillMaxWidth().background(EzoneSurface).padding(vertical = 2.dp), horizontalArrangement = Arrangement.Center) {
+                Row(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 16.dp, vertical = 9.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     listOf("For you", "Following").forEach { item ->
-                        TextButton(onClick = { feedMode = item; appPrefs.edit().putString("default_feed", item).apply() }) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(item, color = if (feedMode == item) EzoneWhite else EzoneMuted, fontSize = 12.sp, fontWeight = if (feedMode == item) FontWeight.Bold else FontWeight.Normal)
-                                Spacer(Modifier.height(4.dp))
-                                if (feedMode == item) Box(Modifier.width(48.dp).height(2.dp).background(EzoneRed, RoundedCornerShape(2.dp)))
-                            }
+                        val active = feedMode == item
+                        Box(
+                            Modifier.weight(1f).clip(RoundedCornerShape(13.dp))
+                                .background(if (active) Color(0xFF351017) else EzoneSurface)
+                                .clickable { feedMode = item; appPrefs.edit().putString("default_feed", item).apply() }
+                                .padding(vertical = 11.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(item, color = if (active) Color(0xFFFF8190) else EzoneMuted, fontSize = 12.sp,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
                         }
                     }
                 }
@@ -1407,7 +1411,7 @@ private fun StoriesRail(context: Context, refreshKey: Int, onStoryPosted: () -> 
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("STORIES", color = EzoneWhite, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.6.sp)
             Spacer(Modifier.weight(1f))
-            Text(if (busy) "Uploading…" else "See all", color = EzoneMuted, fontSize = 10.sp)
+            Text(if (busy) "Uploading…" else "24 HOURS", color = EzoneMuted, fontSize = 9.sp, letterSpacing = 1.sp)
         }
         Spacer(Modifier.height(10.dp))
         androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -2039,14 +2043,22 @@ private fun ProfileStat(value: String, label: String) {
 
 @Composable
 private fun ProfileGalleryTabs(selected: String, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(EzoneSurface).padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 10.dp, vertical = 5.dp)) {
         listOf("Posts", "Reels", "Tagged").forEach { label ->
-            TextButton(onClick = { onSelect(label) }) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(label, color = if (selected == label) EzoneWhite else EzoneMuted, fontSize = 11.sp, fontWeight = if (selected == label) FontWeight.Bold else FontWeight.Normal)
-                    Spacer(Modifier.height(3.dp))
-                    if (selected == label) Box(Modifier.width(30.dp).height(2.dp).background(EzoneRed, CircleShape))
-                }
+            val active = selected == label
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                    .clickable { onSelect(label) }.padding(vertical = 9.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(when(label) { "Posts" -> "▦"; "Reels" -> "▶"; else -> "♧" },
+                    color = if (active) EzoneWhite else EzoneMuted, fontSize = 19.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(label, color = if (active) EzoneWhite else EzoneMuted, fontSize = 10.sp,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+                Spacer(Modifier.height(5.dp))
+                Box(Modifier.fillMaxWidth(0.35f).height(2.dp).clip(CircleShape)
+                    .background(if (active) EzoneRed else Color.Transparent))
             }
         }
     }
