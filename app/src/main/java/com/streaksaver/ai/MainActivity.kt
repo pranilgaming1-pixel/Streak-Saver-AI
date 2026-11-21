@@ -14,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1580,7 +1582,7 @@ private fun ReelCard(context: Context, post: EzonePost, myId: String, autoPlay: 
                     Text("@${author?.username ?: "member"}", color = Color.White.copy(alpha = 0.78f), fontSize = 10.sp)
                 }
                 Spacer(Modifier.width(10.dp))
-                Text("Follow", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                Text("View profile", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0x55FFFFFF)).clickable { author?.id?.let(onProfile) }.padding(horizontal = 10.dp, vertical = 6.dp))
             }
             if (post.body.isNotBlank()) {
@@ -1808,7 +1810,7 @@ private fun PostCard(
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = "Post photo",
-                    modifier = Modifier.fillMaxWidth().aspectRatio(0.92f).clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.92f).clip(RoundedCornerShape(8.dp)).pointerInput(post.id, liked) { detectTapGestures(onDoubleTap = { if (!liked) onLike() }) },
                     contentScale = ContentScale.Crop
                 )
             } else {
