@@ -44,7 +44,7 @@ private data class EzoneDirectMessage(
 )
 
 @Composable
-fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
+fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit, onNewMessage: () -> Unit) {
     var messages by remember { mutableStateOf<List<EzoneDirectMessage>>(emptyList()) }
     var profiles by remember { mutableStateOf<Map<String, EzoneProfile>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
@@ -82,7 +82,7 @@ fun MessagesScreen(context: Context, onOpenChat: (String, String) -> Unit) {
     Column(Modifier.fillMaxSize().background(MsgBg)) {
         Box(Modifier.fillMaxWidth().padding(top = 15.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
             Text("Messages", color = MsgText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("✎", color = MsgText, fontSize = 21.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).clickable { refresh++ })
+            Text("✎", color = MsgText, fontSize = 21.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).clickable { onNewMessage() }.semantics { contentDescription = "Start a new message" })
         }
         OutlinedTextField(
             value = searchQuery,
@@ -154,7 +154,7 @@ fun DirectChatDialog(context: Context, otherUserId: String, otherUserName: Strin
     var error by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     val me = EzoneSession.userId
-    LaunchedEffect(otherUserId) {
+    LaunchedEffect(otherUserId, refresh) {
         EzoneBackend.request(
             context, "PATCH",
             "/rest/v1/direct_messages?sender_id=eq." + otherUserId + "&receiver_id=eq." + me + "&seen_at=is.null",
