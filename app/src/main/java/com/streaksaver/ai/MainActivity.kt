@@ -1169,8 +1169,8 @@ private fun EzoneSettingsScreen(
     var passwordDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(EzoneBlack)) {
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text("Make Ezone yours", color = EzoneWhite, fontSize = 25.sp, fontWeight = FontWeight.Black)
-            Text("Control your account and app experience.", color = EzoneMuted, fontSize = 12.sp)
+            Text("Your Ezone", color = EzoneWhite, fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
+            Text("Make your space feel like yours.", color = EzoneMuted, fontSize = 12.sp)
             Spacer(Modifier.height(18.dp))
             SettingsSection("ACCOUNT")
             SettingsAction("Edit profile", "Name, username, bio and profile photo", "›", onEditProfile)
@@ -1327,7 +1327,7 @@ private fun SettingsSection(title: String) {
 
 @Composable
 private fun SettingsAction(title: String, subtitle: String, trailing: String, onClick: () -> Unit, danger: Boolean = false) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(EzoneSurface).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = if (danger) Color(0xFFFF8997) else EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
@@ -1338,7 +1338,7 @@ private fun SettingsAction(title: String, subtitle: String, trailing: String, on
 
 @Composable
 private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Text(subtitle, color = EzoneMuted, fontSize = 10.sp, lineHeight = 14.sp)
@@ -1349,7 +1349,7 @@ private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, on
 
 @Composable
 private fun SettingsChoice(title: String, subtitle: String, options: List<String>, selected: String, onChange: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 13.dp)) {
         Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Text(subtitle, color = EzoneMuted, fontSize = 10.sp)
         Spacer(Modifier.height(9.dp))
@@ -1366,7 +1366,7 @@ private fun SettingsChoice(title: String, subtitle: String, options: List<String
 
 @Composable
 private fun SettingsInfo(title: String, subtitle: String) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(EzoneSurface).padding(horizontal = 14.dp, vertical = 12.dp)) {
         Text(title, color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Text(subtitle, color = EzoneMuted, fontSize = 10.sp, lineHeight = 15.sp)
     }
