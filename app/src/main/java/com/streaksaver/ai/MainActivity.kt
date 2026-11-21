@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = AndroidColor.rgb(5, 5, 5)
-        window.navigationBarColor = AndroidColor.rgb(17, 16, 29)
+        window.navigationBarColor = AndroidColor.rgb(5, 5, 5)
         EzoneSession.restore(this)
         handleAuthCallback(intent)
         setContent { EzoneApp(this) }
@@ -659,7 +659,7 @@ private fun EzoneMainScreen(
                         Text("♡", color = EzoneWhite, fontSize = 28.sp)
                     }
                 } else if (tab == "Profile") {
-                    Box(Modifier.size(32.dp).clickable { tab = "Create" }, contentAlignment = Alignment.Center) { Text("▧", color = EzoneWhite, fontSize = 20.sp) }
+                    Box(Modifier.size(32.dp).clickable { tab = "Create" }, contentAlignment = Alignment.Center) { Text("▣", color = EzoneWhite, fontSize = 19.sp) }
                     Box(Modifier.size(32.dp).clickable { tab = "Settings" }, contentAlignment = Alignment.Center) { Text("☰", color = EzoneWhite, fontSize = 20.sp) }
                 } else if (tab == "Explore") {
                     Box(Modifier.size(38.dp).clickable { tab = "Search" }, contentAlignment = Alignment.CenterEnd) { Text("⌕", color = EzoneWhite, fontSize = 25.sp) }
@@ -1812,18 +1812,18 @@ private fun PostCard(
         }
     }
 
-    Column(Modifier.fillMaxWidth().padding(vertical = 5.dp).background(EzoneBlack).padding(horizontal = 14.dp, vertical = 11.dp)) {
+    Column(Modifier.fillMaxWidth().background(EzoneBlack).padding(horizontal = 15.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(CircleShape).background(Brush.sweepGradient(listOf(EzoneRed, Color(0xFFFFFFFF), EzoneRed))).padding(2.dp)) {
-                Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 38, author?.avatarUrl)
-            }
-            Spacer(Modifier.width(10.dp))
+            Avatar(author?.displayName?.take(1)?.uppercase() ?: "E", 30, author?.avatarUrl)
+            Spacer(Modifier.width(9.dp))
             Column(Modifier.weight(1f)) {
-                Text(author?.displayName ?: "Ezone member", color = EzoneWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { author?.id?.let(onProfile) })
-                Text("@" + (author?.username ?: "member") + "  ·  " + post.createdAt.substringBefore("T"), color = EzoneMuted, fontSize = 10.sp,
-                    modifier = Modifier.clickable { author?.id?.let(onProfile) })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(author?.username ?: "ezone.member", color = EzoneWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { author?.id?.let(onProfile) })
+                    Text("  ·  " + post.createdAt.substringBefore("T"), color = EzoneMuted, fontSize = 10.sp)
+                }
             }
+            Text("•••", color = EzoneMuted, fontSize = 16.sp)
         }
         if (post.body.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
@@ -1836,14 +1836,14 @@ private fun PostCard(
                 AsyncImage(
                     model = mediaUrl,
                     contentDescription = "Post photo",
-                    modifier = Modifier.fillMaxWidth().aspectRatio(0.92f).clip(RoundedCornerShape(8.dp)).pointerInput(post.id, liked) { detectTapGestures(onDoubleTap = { if (!liked) onLike() }) },
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.82f).pointerInput(post.id, liked) { detectTapGestures(onDoubleTap = { if (!liked) onLike() }) },
                     contentScale = ContentScale.Crop
                 )
             } else {
                 EzoneVideoPlayer(
                     context = context,
                     url = mediaUrl,
-                    modifier = Modifier.fillMaxWidth().height(330.dp).clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxWidth().height(330.dp),
                     loop = false,
                     showController = true,
                     autoPlay = autoplayFeedVideos && !dataSaver
@@ -2053,22 +2053,14 @@ private fun ProfileHeader(
                 if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp)
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            ProfileStat(postCount.toString(), "Threads")
-            ProfileStat(followerCount.toString(), "Followers")
-            ProfileStat(followingCount.toString(), "Following")
-        }
-        Spacer(Modifier.height(14.dp))
-        if (profile.pronouns.isNotBlank()) Text(profile.pronouns, color = EzoneMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
-        if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp))
+        if (profile.bio.isNotBlank()) Text(profile.bio, color = EzoneWhite, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 12.dp))
         Row(Modifier.fillMaxWidth().padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             if (profile.location.isNotBlank()) {
                 Text("⌖  ${profile.location}", color = EzoneMuted, fontSize = 11.sp)
                 if (profile.website.isNotBlank()) Spacer(Modifier.width(12.dp))
             }
             if (profile.website.isNotBlank()) {
-                Text("↗  ${profile.website}", color = accentColor, fontSize = 11.sp, maxLines = 1,
+                Text("↗  ${profile.website}", color = EzoneWhite, fontSize = 11.sp, maxLines = 1,
                     modifier = Modifier.clickable {
                         val link = if (profile.website.startsWith("http://") || profile.website.startsWith("https://")) profile.website else "https://" + profile.website
                         try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
@@ -2076,6 +2068,13 @@ private fun ProfileHeader(
                     })
             }
         }
+        Spacer(Modifier.height(17.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            ProfileStat(postCount.toString(), "Posts")
+            ProfileStat(followerCount.toString(), "Followers")
+            ProfileStat(followingCount.toString(), "Following")
+        }
+        Spacer(Modifier.height(14.dp))
         Spacer(Modifier.height(15.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (isOwn) {
